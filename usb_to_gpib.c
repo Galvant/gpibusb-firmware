@@ -17,9 +17,7 @@
 #include <18F4520.h>
 #fuses HS, NOPROTECT, NOLVP, WDT, WDT256
 #use delay(clock=18432000)
-//#use delay(clock=20000000)
 #use rs232(baud=460800,uart1)
-//#use rs232(baud=115200,uart1)
 
 #include <string.h>
 #include <stdio.h>
@@ -264,7 +262,6 @@ char gpib_receive( char *byt ) {
 	while( input(DAV) && (seconds<=timeout) ) {
 		if( seconds == timeout ) {
 			printf("Timeout error: Waiting for DAV to go low while reading\n\r");
-			//printf("DAV: %x\n\r",input(DAV));
 			reset_cpu();
 			return 0xff;
 		}
@@ -331,6 +328,17 @@ void gpib_read(void) {
 	i = 0;
 	bufPnt = &readBuf[0];
 	
+
+	/*
+	* In this section you will notice that I buffer the received characters, then manually
+	* iterate the pointer through the buffer, writing them to UART. If I instead just tried
+	* to printf the entire 'string' it would fail. (even if I add a null char at the end).
+	* This is because when transfering binary data, some actual data points can be 0x00.
+	*
+	* The other option of going putc(readBuf[x]);x++; Is for some reason slower than getting
+	* a pointer on the first element, then iterating that pointer through the buffer (as I
+	* have done here).
+	*/
 	if( eoiUse == 1 ){
 		do {
 			eoiFound = gpib_receive(&readCharacter);
@@ -354,7 +362,6 @@ void gpib_read(void) {
 			putc(*bufPnt);
 			++bufPnt;
 		}
-		//printf("\r");
 	} else {
 		do {
 			eoiFound = gpib_receive(&readCharacter);
@@ -378,9 +385,6 @@ void gpib_read(void) {
 			putc(*bufPnt);
 			++bufPnt;
 		}
-		/*if( eos != "\r" ){
-			printf("\r"); // Include a CR to signal end of serial transmission
-		}*/
 	}
 	
 	if( eos != "\r" ){
@@ -416,8 +420,6 @@ void main(void) {
 #endif
 	
 	timeoutPeriod = 5; // Default timeout period, in seconds
-	
-	//setup_uart(UART_AUTODETECT);
 	
 	// Start all the GPIB related stuff
 	gpib_init(); // Initialize the GPIB Bus
@@ -457,12 +459,12 @@ void main(void) {
 					eoiUse = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
 				}
 				
-				strcpy(compareBuf,"+test"); // "+test:" is used to test the controller
+				strcpy(compareBuf,"+test"); // "+test" is used to test the controller
 				if( strncmp((char*)buf,(char*)compareBuf,5)==0 ) { 
 					printf("testing\n\r");
 				}
 								
-				strcpy(compareBuf,"+read"); // "+read:" is used to force the controller to read
+				strcpy(compareBuf,"+read"); // "+read" is used to force the controller to read
 				if( strncmp((char*)buf,(char*)compareBuf,5)==0 ) { 
 					gpib_read();
 				}
