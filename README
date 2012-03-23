@@ -1,0 +1,8 @@
+This repository contains the source and hex files for the GPIBUSB firmware.
+
+Requires the CCS compiler.
+
+This work is released under the Creative Commons Attribution-Sharealike 3.0 license.
+See http://creativecommons.org/licenses/by-sa/3.0/ or the included license/LICENSE.TXT file for more information.
+
+Attribution requirements can be found in license/ATTRIBUTION.TXT
