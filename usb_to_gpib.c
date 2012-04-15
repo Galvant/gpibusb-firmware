@@ -414,6 +414,13 @@ void main(void) {
 	char compareBuf[10];
 	char writeError;
 	
+	char addressBuf[4] = "+a:";
+	char timeoutBuf[4] = "+t:";
+	char eosBuf[6] = "+eos:";
+	char eoiBuf[6] = "+eoi:";
+	char testBuf[6] = "+test";
+	char readCmdBuf[6] = "+read";
+	
 	output_high(LED_ERROR); // Turn on the error LED
 	
 	// Setup the Watchdog Timer
@@ -450,7 +457,7 @@ void main(void) {
 			
 			if( buf[0] == '+' ) { // Controller commands start with a +
 			
-				strcpy(compareBuf,"+a:"); // "+a:" is used to set the address
+				/*strcpy(compareBuf,"+a:"); // "+a:" is used to set the address
 				if( strncmp((char*)buf,(char*)compareBuf,3)==0 ) { 
 					partnerAddress = atoi( (char*)(&(buf[3])) ); // Parse out the GPIB address
 				}
@@ -478,6 +485,25 @@ void main(void) {
 				strcpy(compareBuf,"+read"); // "+read" is used to force the controller to read
 				if( strncmp((char*)buf,(char*)compareBuf,5)==0 ) { 
 					gpib_read();
+				}*/
+				
+				if( strncmp((char*)buf,(char*)addressBuf,3)==0 ) { 
+					partnerAddress = atoi( (char*)(&(buf[3])) ); // Parse out the GPIB address
+				}
+				else if( strncmp((char*)buf,(char*)readCmdBuf,5)==0 ) { 
+					gpib_read();
+				}
+				else if( strncmp((char*)buf,(char*)testBuf,5)==0 ) { 
+					printf("testing\n\r");
+				}
+				else if( strncmp((char*)buf,(char*)timeoutBuf,3)==0 ) { 
+					timeoutPeriod = atoi( (char*)(&(buf[3])) ); // Parse out the timeout period
+				}
+				else if( strncmp((char*)buf,(char*)eosBuf,5)==0 ) { 
+					eos = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
+				}
+				else if( strncmp((char*)buf,(char*)eoiBuf,5)==0 ) { 
+					eoiUse = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
 				}
 				
 			} 
