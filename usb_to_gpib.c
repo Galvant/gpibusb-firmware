@@ -30,7 +30,7 @@ int partnerAddress, myAddress;
 char eos = 1; // Default end of string character.
 char eoiUse = 1; // By default, we are using EOI to signal end of msg from instrument
 
-#define INTS_PER_SECOND 2
+#define INTS_PER_SECOND 3
 byte int_count, timeoutPeriod, timeout;
 int seconds;
 
@@ -303,27 +303,32 @@ char gpib_receive( char *byt ) {
 	return eoiStatus;
 }
 
-void gpib_read(void) {
+char gpib_read(void) {
 	char readCharacter,eoiFound;
 	char readBuf[100];
 	char i = 0, j=0;
-	
+	char errorFound;	
+
 	char *bufPnt;
 	bufPnt = &readBuf[0];
 	
 	// Command all talkers and listeners to stop
 	cmd_buf[0] = CMD_UNT;
-	gpib_cmd( cmd_buf, 1 );
+	errorFound = gpib_cmd( cmd_buf, 1 );
+	if(errorFound){return 0xff;}
 	cmd_buf[0] = CMD_UNL;
-	gpib_cmd( cmd_buf, 1 );
+	errorFound = gpib_cmd( cmd_buf, 1 );
+	if(errorFound){return 0xff;}
 	
 	// Set the controller into listener mode
 	cmd_buf[0] = myAddress + 0x20;
-	gpib_cmd( cmd_buf, 1 );
+	errorFound = gpib_cmd( cmd_buf, 1 );
+	if(errorFound){return 0xff;}
 	
 	// Set target device into talker mode
 	cmd_buf[0] = partnerAddress + 0x40;
-	gpib_cmd( cmd_buf, 1 );
+	errorFound = gpib_cmd( cmd_buf, 1 );
+	if(errorFound){return 0xff;}
 	
 	i = 0;
 	bufPnt = &readBuf[0];
@@ -342,6 +347,7 @@ void gpib_read(void) {
 	if( eoiUse == 1 ){
 		do {
 			eoiFound = gpib_receive(&readCharacter);
+			if(eoiFound==0xff){return 0xff;}
 			readBuf[i] = readCharacter; // Copy the read character into the buffer
 			i++;
 			if( i == 100 ){
@@ -365,6 +371,7 @@ void gpib_read(void) {
 	} else {
 		do {
 			eoiFound = gpib_receive(&readCharacter);
+			if(eoiFound==0xff){return 0xff;}
 			readBuf[i] = readCharacter; // Copy the read character into the buffer
 			i++;
 			if( i == 100 ){
@@ -394,9 +401,13 @@ void gpib_read(void) {
 	
 	// Command all talkers and listeners to stop
 	cmd_buf[0] = CMD_UNT;
-	gpib_cmd( cmd_buf, 1 );
+	errorFound = gpib_cmd( cmd_buf, 1 );
+	if(errorFound==0xff){return 0xff;}
 	cmd_buf[0] = CMD_UNL;
-	gpib_cmd( cmd_buf, 1 );
+	errorFound = gpib_cmd( cmd_buf, 1 );
+	if(errorFound==0xff){return 0xff;}
+
+	return 0;
 }
 
 void main(void) {
