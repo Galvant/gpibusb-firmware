@@ -132,9 +132,9 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
 		while( input(NDAC) && (seconds<=timeout) ) {
-			if( seconds == timeout ) {
+			if( seconds >= timeout ) {
 				printf("Timeout error: Waiting for NDAC to go low while writing\n\r");
-				return 0xff;
+				return 1;
 			}
 		}
 #else
@@ -190,9 +190,9 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
 		while( !(input(NRFD)) && (seconds<=timeout) ) {
-			if( seconds == timeout ) {
+			if( seconds >= timeout ) {
 				printf("Timeout error: Waiting for NRFD to go high while writing\n\r");
-				return 0xff;
+				return 1;
 			}
 		}
 #else		
@@ -211,9 +211,9 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
 		while( !(input(NDAC)) && (seconds<=timeout) ) {
-			if( seconds == timeout ) {
+			if( seconds >= timeout ) {
 				printf("Timeout error: Waiting for NDAC to go high while writing\n\r");
-				return 0xff;
+				return 1;
 			}
 		}
 #else
@@ -240,7 +240,7 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 	
 	output_float(EOI);
 	
-	return 0x00;
+	return 0;
 	
 }
 
@@ -260,9 +260,8 @@ char gpib_receive( char *byt ) {
 #ifdef WITH_TIMEOUT
 	timeout = seconds + timeoutPeriod;
 	while( input(DAV) && (seconds<=timeout) ) {
-		if( seconds == timeout ) {
+		if( seconds >= timeout ) {
 			printf("Timeout error: Waiting for DAV to go low while reading\n\r");
-			reset_cpu();
 			return 0xff;
 		}
 	}
@@ -284,7 +283,7 @@ char gpib_receive( char *byt ) {
 #ifdef WITH_TIMEOUT
 	timeout = seconds + timeoutPeriod;
 	while( !(input(DAV)) && (seconds<=timeout) ) {
-		if( seconds == timeout ) {
+		if( seconds >= timeout ) {
 			printf("Timeout error: Waiting for DAV to go high while reading\n\r");
 			return 0xff;
 		}
@@ -307,28 +306,27 @@ char gpib_read(void) {
 	char readCharacter,eoiFound;
 	char readBuf[100];
 	char i = 0, j=0;
-	char errorFound;	
+	char errorFound = 0;	
 
 	char *bufPnt;
 	bufPnt = &readBuf[0];
 	
 	// Command all talkers and listeners to stop
 	cmd_buf[0] = CMD_UNT;
-	errorFound = gpib_cmd( cmd_buf, 1 );
-	if(errorFound){return 0xff;}
+	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
 	cmd_buf[0] = CMD_UNL;
-	errorFound = gpib_cmd( cmd_buf, 1 );
-	if(errorFound){return 0xff;}
+	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
+	if(errorFound){return 1;}
 	
 	// Set the controller into listener mode
 	cmd_buf[0] = myAddress + 0x20;
-	errorFound = gpib_cmd( cmd_buf, 1 );
-	if(errorFound){return 0xff;}
+	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
+	if(errorFound){return 1;}
 	
 	// Set target device into talker mode
 	cmd_buf[0] = partnerAddress + 0x40;
 	errorFound = gpib_cmd( cmd_buf, 1 );
-	if(errorFound){return 0xff;}
+	if(errorFound){return 1;}
 	
 	i = 0;
 	bufPnt = &readBuf[0];
@@ -347,7 +345,7 @@ char gpib_read(void) {
 	if( eoiUse == 1 ){
 		do {
 			eoiFound = gpib_receive(&readCharacter);
-			if(eoiFound==0xff){return 0xff;}
+			if(eoiFound==0xff){return 1;}
 			readBuf[i] = readCharacter; // Copy the read character into the buffer
 			i++;
 			if( i == 100 ){
@@ -371,7 +369,7 @@ char gpib_read(void) {
 	} else {
 		do {
 			eoiFound = gpib_receive(&readCharacter);
-			if(eoiFound==0xff){return 0xff;}
+			if(eoiFound==0xff){return 1;}
 			readBuf[i] = readCharacter; // Copy the read character into the buffer
 			i++;
 			if( i == 100 ){
@@ -398,16 +396,14 @@ char gpib_read(void) {
 		printf("\r"); // Include a CR to signal end of serial transmission
 	}
 	
-	
+	errorFound = 0;
 	// Command all talkers and listeners to stop
 	cmd_buf[0] = CMD_UNT;
-	errorFound = gpib_cmd( cmd_buf, 1 );
-	if(errorFound==0xff){return 0xff;}
+	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
 	cmd_buf[0] = CMD_UNL;
-	errorFound = gpib_cmd( cmd_buf, 1 );
-	if(errorFound==0xff){return 0xff;}
+	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
 
-	return 0;
+	return errorFound;
 }
 
 void main(void) {
@@ -491,7 +487,9 @@ void main(void) {
 					partnerAddress = atoi( (char*)(&(buf[3])) ); // Parse out the GPIB address
 				}
 				else if( strncmp((char*)buf,(char*)readCmdBuf,5)==0 ) { 
-					gpib_read();
+					if(gpib_read()){
+						printf("Read error occured.\n\r");
+					}
 				}
 				else if( strncmp((char*)buf,(char*)testBuf,5)==0 ) { 
 					printf("testing\n\r");
@@ -511,39 +509,36 @@ void main(void) {
 				
 				// Command all talkers and listeners to stop
 				cmd_buf[0] = CMD_UNT;
-				gpib_cmd( cmd_buf, 1 );
+				writeError = writeError || gpib_cmd( cmd_buf, 1 );
 				cmd_buf[0] = CMD_UNL;
-				gpib_cmd( cmd_buf, 1 );
+				writeError = writeError || gpib_cmd( cmd_buf, 1 );
 				
 				// Set target device into listen mode
 				cmd_buf[0] = partnerAddress + 0x20;
-				gpib_cmd( cmd_buf, 1 );
+				writeError = writeError || gpib_cmd( cmd_buf, 1 );
 				
 				// Set the controller into talker mode
 				cmd_buf[0] = myAddress + 0x40;
-				gpib_cmd( cmd_buf, 1 );
+				writeError = writeError || gpib_cmd( cmd_buf, 1 );
 				
 				// Send out command to the bus
-				writeError = gpib_write( buf, 0 );
-				
-				if (writeError == 0xff) {
-					writeError = 1;
-				}
+				writeError = writeError || gpib_write( buf, 0 );
 				
 				if( eoiUse == 0 ) { // If we are not using EOI, need to output termination byte to inst
 					buf[0] = eos;
 					writeError = gpib_write( buf, 1 );
-					
-					if (writeError == 0xff) {
-						writeError = 1;
-					}
 				}
 				
-
-				if ( ( strchr( (char*)buf, '?' ) != NULL ) && !( writeError ) ) { // If cmd contains a question mark -> is a query
-					
-					gpib_read();
-					
+				// If cmd contains a question mark -> is a query
+				if ( ( strchr( (char*)buf, '?' ) != NULL ) && !( writeError ) ) { 
+					if(gpib_read()){
+						printf("Read error occured.\n\r");
+					}
+				}
+				else if(writeError){
+					writeError = 0;
+					printf("Write error occured, will not check response.\n\r");
+					reset_cpu();
 				}
 				
 			}
