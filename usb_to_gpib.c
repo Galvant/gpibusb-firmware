@@ -15,7 +15,7 @@
 */
 
 #include <18F4520.h>
-#fuses HS, NOPROTECT, NOLVP, WDT, WDT256
+#fuses HS, NOPROTECT, NOLVP, WDT, WDT512
 #use delay(clock=18432000)
 #use rs232(baud=460800,uart1)
 
@@ -24,9 +24,10 @@
 #include <stdlib.h>
 #include "usb_to_gpib.h"
 
-char cmd_buf[64], buf[64];
+char cmd_buf[64], buf[64], newBuf[64];
 int partnerAddress, myAddress;
 
+char newCmd = 0;
 char eos = 1; // Default end of string character.
 char eoiUse = 1; // By default, we are using EOI to signal end of msg from instrument
 
@@ -36,6 +37,7 @@ int seconds;
 
 #define WITH_TIMEOUT
 #define WITH_WDT
+//#define VERBOSE_DEBUG
 
 #int_rtcc
 void clock_isr() {
@@ -43,6 +45,13 @@ void clock_isr() {
 		++seconds;
 		int_count=INTS_PER_SECOND;
 	}
+}
+
+#int_rda
+RDA_isr()
+{
+	gets(buf);
+	newCmd = 1;
 }
 
 // Function puts all the GPIB pins into a high impedance "floating" state.
@@ -311,6 +320,10 @@ char gpib_read(void) {
 	char *bufPnt;
 	bufPnt = &readBuf[0];
 	
+	#ifdef VERBOSE_DEBUG
+	printf("gpib_read start\n\r");
+	#endif
+	
 	// Command all talkers and listeners to stop
 	cmd_buf[0] = CMD_UNT;
 	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
@@ -342,6 +355,9 @@ char gpib_read(void) {
 	* a pointer on the first element, then iterating that pointer through the buffer (as I
 	* have done here).
 	*/
+	#ifdef VERBOSE_DEBUG
+	printf("gpib_read loop start\n\r");
+	#endif
 	if( eoiUse == 1 ){
 		do {
 			eoiFound = gpib_receive(&readCharacter);
@@ -355,9 +371,9 @@ char gpib_read(void) {
 				}
 				i = 0;
 				bufPnt = &readBuf[0];
-				#ifdef WITH_WDT
+				/*#ifdef WITH_WDT
 				restart_wdt();
-				#endif
+				#endif*/
 			}
 
 		} while ( eoiFound );
@@ -379,9 +395,9 @@ char gpib_read(void) {
 				}
 				i = 0;
 				bufPnt = &readBuf[0];
-				#ifdef WITH_WDT
+				/*#ifdef WITH_WDT
 				restart_wdt();
-				#endif
+				#endif*/
 			}
 
 		} while ( readCharacter != eos );
@@ -396,12 +412,20 @@ char gpib_read(void) {
 		printf("\r"); // Include a CR to signal end of serial transmission
 	}
 	
+	#ifdef VERBOSE_DEBUG
+	printf("gpib_read loop end\n\r");
+	#endif
+	
 	errorFound = 0;
 	// Command all talkers and listeners to stop
 	cmd_buf[0] = CMD_UNT;
 	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
 	cmd_buf[0] = CMD_UNL;
 	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
+	
+	#ifdef VERBOSE_DEBUG
+	printf("gpib_read end\n\r");
+	#endif
 
 	return errorFound;
 }
@@ -430,6 +454,7 @@ void main(void) {
 	set_rtcc(0);
 	setup_counters( RTCC_INTERNAL, RTCC_DIV_16 );
 	enable_interrupts( INT_RTCC );
+	enable_interrupts(INT_RDA);
 	enable_interrupts( GLOBAL );
 #endif
 	
@@ -440,6 +465,22 @@ void main(void) {
 	writeError = gpib_controller_assign(0x00);
 	
 	output_low(LED_ERROR); // Turn off the error LED
+	
+	#ifdef VERBOSE_DEBUG
+	switch ( restart_cause() )
+	{
+		case WDT_TIMEOUT:
+		{
+			printf("WDT restart\r\n");
+			break;
+		}
+		case NORMAL_POWER_UP:
+		{
+			printf("Normal power up\r\n");
+			break;
+		}
+	}
+	#endif
 
 	// Main execution loop
 	for(;;) {
@@ -448,41 +489,11 @@ void main(void) {
 		restart_wdt();
 #endif
 		
-		if(kbhit()) { // If PC is sending input
-			gets(buf); // Recieve serial command
+		if( newCmd ) { // If PC is sending input
+			newCmd = 0;	
 			
 			if( buf[0] == '+' ) { // Controller commands start with a +
 			
-				/*strcpy(compareBuf,"+a:"); // "+a:" is used to set the address
-				if( strncmp((char*)buf,(char*)compareBuf,3)==0 ) { 
-					partnerAddress = atoi( (char*)(&(buf[3])) ); // Parse out the GPIB address
-				}
-				
-				strcpy(compareBuf,"+t:"); // "+t:" is used to set the timeout period
-				if( strncmp((char*)buf,(char*)compareBuf,3)==0 ) { 
-					timeoutPeriod = atoi( (char*)(&(buf[3])) ); // Parse out the timeout period
-				}
-				
-				strcpy(compareBuf,"+eos:"); // "+eos:" is used to set the end of string
-				if( strncmp((char*)buf,(char*)compareBuf,5)==0 ) { 
-					eos = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
-				}
-				
-				strcpy(compareBuf,"+eoi:"); // "+eoi:" is used to set EOI usage condition
-				if( strncmp((char*)buf,(char*)compareBuf,5)==0 ) { 
-					eoiUse = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
-				}
-				
-				strcpy(compareBuf,"+test"); // "+test" is used to test the controller
-				if( strncmp((char*)buf,(char*)compareBuf,5)==0 ) { 
-					printf("testing\n\r");
-				}
-								
-				strcpy(compareBuf,"+read"); // "+read" is used to force the controller to read
-				if( strncmp((char*)buf,(char*)compareBuf,5)==0 ) { 
-					gpib_read();
-				}*/
-				
 				if( strncmp((char*)buf,(char*)addressBuf,3)==0 ) { 
 					partnerAddress = atoi( (char*)(&(buf[3])) ); // Parse out the GPIB address
 				}
@@ -522,6 +533,9 @@ void main(void) {
 				writeError = writeError || gpib_cmd( cmd_buf, 1 );
 				
 				// Send out command to the bus
+				#ifdef VERBOSE_DEBUG
+				printf("gpib_write: %s\n\r",buf);
+				#endif
 				writeError = writeError || gpib_write( buf, 0 );
 				
 				if( eoiUse == 0 ) { // If we are not using EOI, need to output termination byte to inst
