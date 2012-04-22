@@ -371,9 +371,9 @@ char gpib_read(void) {
 				}
 				i = 0;
 				bufPnt = &readBuf[0];
-				/*#ifdef WITH_WDT
+				#ifdef WITH_WDT
 				restart_wdt();
-				#endif*/
+				#endif
 			}
 
 		} while ( eoiFound );
@@ -395,9 +395,9 @@ char gpib_read(void) {
 				}
 				i = 0;
 				bufPnt = &readBuf[0];
-				/*#ifdef WITH_WDT
+				#ifdef WITH_WDT
 				restart_wdt();
-				#endif*/
+				#endif
 			}
 
 		} while ( readCharacter != eos );
@@ -552,7 +552,6 @@ void main(void) {
 				else if(writeError){
 					writeError = 0;
 					printf("Write error occured, will not check response.\n\r");
-					reset_cpu();
 				}
 				
 			}
