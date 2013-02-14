@@ -440,6 +440,7 @@ void main(void) {
 	char eoiBuf[6] = "+eoi:";
 	char testBuf[6] = "+test";
 	char readCmdBuf[6] = "+read";
+	char getCmdBuf[5] = "+get";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -513,6 +514,14 @@ void main(void) {
 				}
 				else if( strncmp((char*)buf,(char*)eoiBuf,5)==0 ) { 
 					eoiUse = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
+				}
+				else if( strncmp((char*)buf,(char*)getCmdBuf,4)==0 ) { 
+					// Send a Group Execute Trigger (GET) bus command
+					cmd_buf[0] = CMD_GET;
+					gpib_cmd( cmd_buf, 1 );
+				}
+				else{
+				    printf("Unrecognized command.\n\r");
 				}
 				
 			} 
