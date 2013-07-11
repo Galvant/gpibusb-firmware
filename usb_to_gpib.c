@@ -24,12 +24,15 @@
 #include <stdlib.h>
 #include "usb_to_gpib.h"
 
+char version[10] = "3";
+
 char cmd_buf[64], buf[64], newBuf[64];
 int partnerAddress, myAddress;
 
 char newCmd = 0;
 char eos = 1; // Default end of string character.
 char eoiUse = 1; // By default, we are using EOI to signal end of msg from instrument
+byte strip = 0;
 
 #define INTS_PER_SECOND 3
 byte int_count, timeoutPeriod, timeout;
@@ -378,7 +381,7 @@ char gpib_read(void) {
 
 		} while ( eoiFound );
 
-		for(j=0;j<i;++j){
+		for(j=0;j<i-strip;++j){
 			putc(*bufPnt);
 			++bufPnt;
 		}
@@ -402,7 +405,7 @@ char gpib_read(void) {
 
 		} while ( readCharacter != eos );
 
-		for(j=0;j<i;++j){
+		for(j=0;j<i-strip;++j){
 			putc(*bufPnt);
 			++bufPnt;
 		}
@@ -441,6 +444,8 @@ void main(void) {
 	char testBuf[6] = "+test";
 	char readCmdBuf[6] = "+read";
 	char getCmdBuf[5] = "+get";
+	char stripBuf[8] = "+strip:";
+	char versionBuf[5] = "+ver";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -514,6 +519,12 @@ void main(void) {
 				}
 				else if( strncmp((char*)buf,(char*)eoiBuf,5)==0 ) { 
 					eoiUse = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
+				}
+				else if( strncmp((char*)buf,(char*)stripBuf,7)==0 ) { 
+					strip = atoi( (char*)(&(buf[7])) ); // Parse out the end of string byte
+				}
+				else if( strncmp((char*)buf,(char*)versionBuf,4)==0 ) { 
+					printf("%s\r", version);
 				}
 				else if( strncmp((char*)buf,(char*)getCmdBuf,4)==0 ) { 
 					// Send a Group Execute Trigger (GET) bus command
