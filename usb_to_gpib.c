@@ -1,17 +1,28 @@
 /*
-* USB to GPIB Adapter
+* GPIBUSB Adapter
 * usb_to_gpib.c
+**
+* © 2013 Steven Casagrande (scasagrande@galvant.ca).
 *
-* Original author: Steven Casagrande (stevencasagrande@gmail.com)
-* 2012 
+* This file is a part of the InstrumentKit project.
+* Licensed under the AGPL version 3.
+**
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Affero General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
 *
-* This work is released under the Creative Commons Attribution-Sharealike 3.0 license.
-* See http://creativecommons.org/licenses/by-sa/3.0/ or the included license/LICENSE.TXT file for more information.
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU Affero General Public License for more details.
 *
-* Attribution requirements can be found in license/ATTRIBUTION.TXT
+* You should have received a copy of the GNU Affero General Public License
+* along with this program. If not, see <http://www.gnu.org/licenses/>.
+**
 *
-*
-* This code requires the CCS compiler from ccsinfo.com to compile. A precompiled hex file is included.
+* This code requires the CCS compiler from ccsinfo.com to compile.
+* A precompiled hex file is included.
 */
 
 #include <18F4520.h>
