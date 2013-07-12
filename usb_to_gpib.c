@@ -45,6 +45,7 @@ char eos = 1; // Default end of string character.
 char eoiUse = 1; // By default, we are using EOI to signal end of 
                  // msg from instrument
 byte strip = 0;
+char autoread = 1;
 
 #define INTS_PER_SECOND 3
 byte int_count, timeoutPeriod, timeout;
@@ -461,6 +462,7 @@ void main(void) {
 	char getCmdBuf[5] = "+get";
 	char stripBuf[8] = "+strip:";
 	char versionBuf[5] = "+ver";
+	char autoReadBuf[11] = "+autoread:"
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -527,16 +529,16 @@ void main(void) {
 					printf("testing\n\r");
 				}
 				else if(strncmp((char*)buf,(char*)timeoutBuf,3)==0) { 
-					timeoutPeriod = atoi( (char*)(&(buf[3])) ); // Parse out the timeout period
+					timeoutPeriod = atoi((char*)(&(buf[3]))); // Parse out the timeout period
 				}
 				else if(strncmp((char*)buf,(char*)eosBuf,5)==0) { 
-					eos = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
+					eos = atoi((char*)(&(buf[5]))); // Parse out the end of string byte
 				}
 				else if(strncmp((char*)buf,(char*)eoiBuf,5)==0) { 
-					eoiUse = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
+					eoiUse = atoi((char*)(&(buf[5]))); // Parse out the end of string byte
 				}
 				else if(strncmp((char*)buf,(char*)stripBuf,7)==0) { 
-					strip = atoi( (char*)(&(buf[7])) ); // Parse out the end of string byte
+					strip = atoi((char*)(&(buf[7]))); // Parse out the end of string byte
 				}
 				else if(strncmp((char*)buf,(char*)versionBuf,4)==0) { 
 					printf("%s\r", version);
@@ -545,6 +547,9 @@ void main(void) {
 					// Send a Group Execute Trigger (GET) bus command
 					cmd_buf[0] = CMD_GET;
 					gpib_cmd(cmd_buf, 1);
+				}
+				else if(strncmp((char*)buf,(char*)autoReadBuf,10)==0) { 
+					autoread = atoi((char*)(&(buf[10])));
 				}
 				else{
 				    printf("Unrecognized command.\n\r");
@@ -580,14 +585,16 @@ void main(void) {
 				}
 				
 				// If cmd contains a question mark -> is a query
-				if ((strchr((char*)buf, '?') != NULL) && !(writeError)) { 
-					if(gpib_read()){
-						printf("Read error occured.\n\r");
-					}
-				}
-				else if(writeError){
-					writeError = 0;
-					printf("Write error occured, will not check response.\n\r");
+				if(autoread){
+				    if ((strchr((char*)buf, '?') != NULL) && !(writeError)) { 
+					    if(gpib_read()){
+						    printf("Read error occured.\n\r");
+					    }
+				    }
+				    else if(writeError){
+					    writeError = 0;
+					    printf("Write error occured.\n\r");
+				    }
 				}
 				
 			}
