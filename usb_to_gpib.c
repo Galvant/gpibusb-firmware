@@ -22,7 +22,7 @@
 **
 *
 * This code requires the CCS compiler from ccsinfo.com to compile.
-* A precompiled hex file is included.
+* A precompiled hex file is included at github.com/Galvant/gpibusb-firmware
 */
 
 #include <18F4520.h>
@@ -42,7 +42,8 @@ int partnerAddress, myAddress;
 
 char newCmd = 0;
 char eos = 1; // Default end of string character.
-char eoiUse = 1; // By default, we are using EOI to signal end of msg from instrument
+char eoiUse = 1; // By default, we are using EOI to signal end of 
+                 // msg from instrument
 byte strip = 0;
 
 #define INTS_PER_SECOND 3
@@ -98,65 +99,67 @@ void gpib_init() {
 	
 }
 
-char gpib_controller_assign( int address ) {
+char gpib_controller_assign(int address) {
 	myAddress = address;
 	
-	output_low(IFC); // Assert interface clear. Resets bus and makes it controller in charge.
+	output_low(IFC); // Assert interface clear. Resets bus and makes it 
+	                 // controller in charge.
 	delay_ms(200);
 	output_float(IFC); // Finishing clearing interface
 	
 	output_low(REN); // Put all connected devices into "remote" mode
 	cmd_buf[0] = CMD_DCL;
-	return gpib_cmd( cmd_buf, 1); // Send GPIB DCL cmd, clear all devices on bus
+	return gpib_cmd(cmd_buf, 1); // Send GPIB DCL cmd, clear all devices on bus
 }
 
-// Write a GPIB CMD byte to the bus
-char gpib_cmd( char *bytes, int length ) {
-	return _gpib_write( bytes, length, 1 );
+char gpib_cmd(char *bytes, int length) {
+    // Write a GPIB CMD byte to the bus
+	return _gpib_write(bytes, length, 1);
 }
 
-// Write a GPIB data string to the bus
-char gpib_write( char *bytes, int length ) {
-	return _gpib_write( bytes, length, 0 );
+char gpib_write(char *bytes, int length) {
+    // Write a GPIB data string to the bus
+	return _gpib_write(bytes, length, 0);
 }
 
-
-/* Write a string of bytes to the bus
-*  bytes: array containing characters to be written
-*  length: number of bytes to write, 0 if not known.
-*  attention: 1 if this is a gpib command, 0 for data
-*/
-char _gpib_write( char *bytes, int length, BOOLEAN attention) {
+char _gpib_write(char *bytes, int length, BOOLEAN attention) {
+    /* 
+    * Write a string of bytes to the bus
+    * bytes: array containing characters to be written
+    * length: number of bytes to write, 0 if not known.
+    * attention: 1 if this is a gpib command, 0 for data
+    */
 	char a; // Storage variable for the current character
 	int i; // Loop counter variable
 	
 	if(attention) // If byte is a gpib bus command
 	{
-		output_low(ATN); // Assert the ATN line, informing all this is a cmd byte.
+		output_low(ATN); // Assert the ATN line, informing all 
+		                 // this is a cmd byte.
 	}
 	
 	if(length==0) // If the length was unknown
 	{
-		length = strlen((char*)bytes); // Calculate the number of bytes to be sent
+		length = strlen((char*)bytes); // Calculate the number of bytes to 
+		                               // be sent
 	}
 	
 	output_float(EOI);
 	output_float(DAV);
 	output_float(NRFD);
 	
-	for( i = 0 ; i < length ; i++ ) { //Loop through each character, write to bus
+	for(i = 0;i < length;i++) { //Loop through each character, write to bus
 		a = bytes[i]; // So I don't have to keep typing bytes[i]
 		
 		output_float(NDAC);
-		
 		
 		// Wait for NDAC to go low, indicating previous bit is now done with
 #ifdef WITH_TIMEOUT
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
-		while( input(NDAC) && (seconds<=timeout) ) {
-			if( seconds >= timeout ) {
-				printf("Timeout error: Waiting for NDAC to go low while writing\n\r");
+		while(input(NDAC) && (seconds <= timeout)) {
+			if(seconds >= timeout) {
+				printf("Timeout: Waiting for NDAC to go low while writing\n");
 				return 1;
 			}
 		}
@@ -212,9 +215,9 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 #ifdef WITH_TIMEOUT
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
-		while( !(input(NRFD)) && (seconds<=timeout) ) {
-			if( seconds >= timeout ) {
-				printf("Timeout error: Waiting for NRFD to go high while writing\n\r");
+		while(!(input(NRFD)) && (seconds <= timeout)) {
+			if(seconds >= timeout) {
+				printf("Timeout: Waiting for NRFD to go high while writing\n");
 				return 1;
 			}
 		}
@@ -222,7 +225,7 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 		while(!(input(NRFD))){}
 #endif
 		
-		if ((i==length-1) && !(attention)) { // If last byte in string
+		if((i==length-1) && !(attention)) { // If last byte in string
 			output_low(EOI); // Assert EOI
 		}
 		
@@ -233,9 +236,9 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 #ifdef WITH_TIMEOUT
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
-		while( !(input(NDAC)) && (seconds<=timeout) ) {
-			if( seconds >= timeout ) {
-				printf("Timeout error: Waiting for NDAC to go high while writing\n\r");
+		while(!(input(NDAC)) && (seconds <= timeout)) {
+			if(seconds >= timeout) {
+				printf("Timeout: Waiting for NDAC to go high while writing\n");
 				return 1;
 			}
 		}
@@ -243,7 +246,8 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 		while(!(input(NDAC))){} 
 #endif
 		
-		output_float(DAV); // Byte has been accepted by all, indicate byte is no longer valid
+		output_float(DAV); // Byte has been accepted by all, indicate 
+		                   // byte is no longer valid
 		
 	} // Finished outputing all bytes to listeners
 	
@@ -267,7 +271,7 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 	
 }
 
-char gpib_receive( char *byt ) {
+char gpib_receive(char *byt) {
 	char a = 0; // Storage for received character
 	char eoiStatus; // Returns 0x00 or 0x01 depending on status of EOI line
 	
@@ -282,14 +286,14 @@ char gpib_receive( char *byt ) {
 	// Wait for DAV to go low (talker informing us the byte is ready)
 #ifdef WITH_TIMEOUT
 	timeout = seconds + timeoutPeriod;
-	while( input(DAV) && (seconds<=timeout) ) {
-		if( seconds >= timeout ) {
-			printf("Timeout error: Waiting for DAV to go low while reading\n\r");
+	while(input(DAV) && (seconds <= timeout)) {
+		if(seconds >= timeout) {
+			printf("Timeout: Waiting for DAV to go low while reading\n");
 			return 0xff;
 		}
 	}
 #else
-	while( input(DAV) ) {} 
+	while(input(DAV)) {} 
 #endif
 	
 	// Assert NRFD, informing talker to not change the data lines
@@ -305,14 +309,14 @@ char gpib_receive( char *byt ) {
 	// Wait for DAV to go high (talker knows that we have read the byte)
 #ifdef WITH_TIMEOUT
 	timeout = seconds + timeoutPeriod;
-	while( !(input(DAV)) && (seconds<=timeout) ) {
-		if( seconds >= timeout ) {
-			printf("Timeout error: Waiting for DAV to go high while reading\n\r");
+	while(!(input(DAV)) && (seconds<=timeout) ) {
+		if(seconds >= timeout) {
+			printf("Timeout: Waiting for DAV to go high while reading\n");
 			return 0xff;
 		}
 	}
 #else
-	while( !(input(DAV)) ) {} 
+	while(!(input(DAV))) {} 
 #endif
 	
 	// Prep for next byte, we have not accepted anything
@@ -340,45 +344,45 @@ char gpib_read(void) {
 	
 	// Command all talkers and listeners to stop
 	cmd_buf[0] = CMD_UNT;
-	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
+	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
 	cmd_buf[0] = CMD_UNL;
-	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
+	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
 	if(errorFound){return 1;}
 	
 	// Set the controller into listener mode
 	cmd_buf[0] = myAddress + 0x20;
-	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
+	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
 	if(errorFound){return 1;}
 	
 	// Set target device into talker mode
 	cmd_buf[0] = partnerAddress + 0x40;
-	errorFound = gpib_cmd( cmd_buf, 1 );
+	errorFound = gpib_cmd(cmd_buf, 1);
 	if(errorFound){return 1;}
 	
 	i = 0;
 	bufPnt = &readBuf[0];
 	
-
 	/*
-	* In this section you will notice that I buffer the received characters, then manually
-	* iterate the pointer through the buffer, writing them to UART. If I instead just tried
-	* to printf the entire 'string' it would fail. (even if I add a null char at the end).
-	* This is because when transfering binary data, some actual data points can be 0x00.
+	* In this section you will notice that I buffer the received characters, 
+	* then manually iterate the pointer through the buffer, writing them to 
+	* UART. If I instead just tried to printf the entire 'string' it would 
+	* fail. (even if I add a null char at the end). This is because when 
+	* transfering binary data, some actual data points can be 0x00.
 	*
-	* The other option of going putc(readBuf[x]);x++; Is for some reason slower than getting
-	* a pointer on the first element, then iterating that pointer through the buffer (as I
-	* have done here).
+	* The other option of going putc(readBuf[x]);x++; Is for some reason slower 
+	* than getting a pointer on the first element, then iterating that pointer 
+	* through the buffer (as I have done here).
 	*/
 	#ifdef VERBOSE_DEBUG
 	printf("gpib_read loop start\n\r");
 	#endif
-	if( eoiUse == 1 ){
+	if(eoiUse == 1){
 		do {
 			eoiFound = gpib_receive(&readCharacter);
 			if(eoiFound==0xff){return 1;}
-			readBuf[i] = readCharacter; // Copy the read character into the buffer
+			readBuf[i] = readCharacter; // Copy the read char into the buffer
 			i++;
-			if( i == 100 ){
+			if(i == 100){
 				for(j=0;j<100;++j){
 					putc(*bufPnt);
 					++bufPnt;
@@ -390,7 +394,7 @@ char gpib_read(void) {
 				#endif
 			}
 
-		} while ( eoiFound );
+		} while (eoiFound);
 
 		for(j=0;j<i-strip;++j){
 			putc(*bufPnt);
@@ -400,9 +404,9 @@ char gpib_read(void) {
 		do {
 			eoiFound = gpib_receive(&readCharacter);
 			if(eoiFound==0xff){return 1;}
-			readBuf[i] = readCharacter; // Copy the read character into the buffer
+			readBuf[i] = readCharacter; // Copy the read char into the buffer
 			i++;
-			if( i == 100 ){
+			if(i == 100){
 				for(j=0;j<100;++j){
 					putc(*bufPnt);
 					++bufPnt;
@@ -414,7 +418,7 @@ char gpib_read(void) {
 				#endif
 			}
 
-		} while ( readCharacter != eos );
+		} while (readCharacter != eos);
 
 		for(j=0;j<i-strip;++j){
 			putc(*bufPnt);
@@ -422,7 +426,7 @@ char gpib_read(void) {
 		}
 	}
 	
-	if( eos != "\r" ){
+	if(eos != "\r"){
 		printf("\r"); // Include a CR to signal end of serial transmission
 	}
 	
@@ -433,9 +437,9 @@ char gpib_read(void) {
 	errorFound = 0;
 	// Command all talkers and listeners to stop
 	cmd_buf[0] = CMD_UNT;
-	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
+	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
 	cmd_buf[0] = CMD_UNL;
-	errorFound = errorFound || gpib_cmd( cmd_buf, 1 );
+	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
 	
 	#ifdef VERBOSE_DEBUG
 	printf("gpib_read end\n\r");
@@ -469,10 +473,10 @@ void main(void) {
 	// Setup the timer
 	int_count=INTS_PER_SECOND;
 	set_rtcc(0);
-	setup_counters( RTCC_INTERNAL, RTCC_DIV_16 );
-	enable_interrupts( INT_RTCC );
+	setup_counters(RTCC_INTERNAL, RTCC_DIV_16);
+	enable_interrupts(INT_RTCC);
 	enable_interrupts(INT_RDA);
-	enable_interrupts( GLOBAL );
+	enable_interrupts(GLOBAL);
 #endif
 	
 	timeoutPeriod = 5; // Default timeout period, in seconds
@@ -506,41 +510,41 @@ void main(void) {
 		restart_wdt();
 #endif
 		
-		if( newCmd ) { // If PC is sending input
+		if(newCmd) { // If PC is sending input
 			newCmd = 0;	
 			
-			if( buf[0] == '+' ) { // Controller commands start with a +
+			if(buf[0] == '+') { // Controller commands start with a +
 			
-				if( strncmp((char*)buf,(char*)addressBuf,3)==0 ) { 
+				if(strncmp((char*)buf,(char*)addressBuf,3)==0) { 
 					partnerAddress = atoi( (char*)(&(buf[3])) ); // Parse out the GPIB address
 				}
-				else if( strncmp((char*)buf,(char*)readCmdBuf,5)==0 ) { 
+				else if(strncmp((char*)buf,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read()){
 						printf("Read error occured.\n\r");
 					}
 				}
-				else if( strncmp((char*)buf,(char*)testBuf,5)==0 ) { 
+				else if(strncmp((char*)buf,(char*)testBuf,5)==0) { 
 					printf("testing\n\r");
 				}
-				else if( strncmp((char*)buf,(char*)timeoutBuf,3)==0 ) { 
+				else if(strncmp((char*)buf,(char*)timeoutBuf,3)==0) { 
 					timeoutPeriod = atoi( (char*)(&(buf[3])) ); // Parse out the timeout period
 				}
-				else if( strncmp((char*)buf,(char*)eosBuf,5)==0 ) { 
+				else if(strncmp((char*)buf,(char*)eosBuf,5)==0) { 
 					eos = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
 				}
-				else if( strncmp((char*)buf,(char*)eoiBuf,5)==0 ) { 
+				else if(strncmp((char*)buf,(char*)eoiBuf,5)==0) { 
 					eoiUse = atoi( (char*)(&(buf[5])) ); // Parse out the end of string byte
 				}
-				else if( strncmp((char*)buf,(char*)stripBuf,7)==0 ) { 
+				else if(strncmp((char*)buf,(char*)stripBuf,7)==0) { 
 					strip = atoi( (char*)(&(buf[7])) ); // Parse out the end of string byte
 				}
-				else if( strncmp((char*)buf,(char*)versionBuf,4)==0 ) { 
+				else if(strncmp((char*)buf,(char*)versionBuf,4)==0) { 
 					printf("%s\r", version);
 				}
-				else if( strncmp((char*)buf,(char*)getCmdBuf,4)==0 ) { 
+				else if(strncmp((char*)buf,(char*)getCmdBuf,4)==0) { 
 					// Send a Group Execute Trigger (GET) bus command
 					cmd_buf[0] = CMD_GET;
-					gpib_cmd( cmd_buf, 1 );
+					gpib_cmd(cmd_buf, 1);
 				}
 				else{
 				    printf("Unrecognized command.\n\r");
@@ -551,31 +555,32 @@ void main(void) {
 				
 				// Command all talkers and listeners to stop
 				cmd_buf[0] = CMD_UNT;
-				writeError = writeError || gpib_cmd( cmd_buf, 1 );
+				writeError = writeError || gpib_cmd(cmd_buf, 1);
 				cmd_buf[0] = CMD_UNL;
-				writeError = writeError || gpib_cmd( cmd_buf, 1 );
+				writeError = writeError || gpib_cmd(cmd_buf, 1);
 				
 				// Set target device into listen mode
 				cmd_buf[0] = partnerAddress + 0x20;
-				writeError = writeError || gpib_cmd( cmd_buf, 1 );
+				writeError = writeError || gpib_cmd(cmd_buf, 1);
 				
 				// Set the controller into talker mode
 				cmd_buf[0] = myAddress + 0x40;
-				writeError = writeError || gpib_cmd( cmd_buf, 1 );
+				writeError = writeError || gpib_cmd(cmd_buf, 1);
 				
 				// Send out command to the bus
 				#ifdef VERBOSE_DEBUG
 				printf("gpib_write: %s\n\r",buf);
 				#endif
-				writeError = writeError || gpib_write( buf, 0 );
+				writeError = writeError || gpib_write(buf, 0);
 				
-				if( eoiUse == 0 ) { // If we are not using EOI, need to output termination byte to inst
+				if(eoiUse == 0) { // If we are not using EOI, need to output 
+				                  // termination byte to inst
 					buf[0] = eos;
-					writeError = gpib_write( buf, 1 );
+					writeError = gpib_write(buf, 1);
 				}
 				
 				// If cmd contains a question mark -> is a query
-				if ( ( strchr( (char*)buf, '?' ) != NULL ) && !( writeError ) ) { 
+				if ((strchr((char*)buf, '?') != NULL) && !(writeError)) { 
 					if(gpib_read()){
 						printf("Read error occured.\n\r");
 					}
