@@ -161,47 +161,9 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 		while(input(NDAC)){} 
 #endif
 
-		// Put the target bit on the data lines
-		if(a&0x01) {
-			output_low(DIO1);
-		} else {
-			output_high(DIO1);
-		}
-		if(a&0x02) {
-			output_low(DIO2);
-		} else {
-			output_high(DIO2);
-		}
-		if(a&0x04) {
-			output_low(DIO3);
-		} else {
-			output_high(DIO3);
-		}
-		if(a&0x08) {
-			output_low(DIO4);
-		} else {
-			output_high(DIO4);
-		}
-		if(a&0x10) {
-			output_low(DIO5);
-		} else {
-			output_high(DIO5);
-		}
-		if(a&0x20) {
-			output_low(DIO6);
-		} else {
-			output_high(DIO6);
-		}
-		if(a&0x40) {
-			output_low(DIO7);
-		} else {
-			output_high(DIO7);
-		}
-		if(a&0x80) {
-			output_low(DIO8);
-		} else {
-			output_high(DIO8);
-		}
+		// Put the byte on the data lines
+		a = a^0xff;
+		output_b(a);
 	
 		output_float(NRFD);
 
