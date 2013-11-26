@@ -3,7 +3,7 @@
 * usb_to_gpib.c
 *
 * Original author: Steven Casagrande (stevencasagrande@gmail.com)
-* 2012 
+* 2012
 *
 * This work is released under the Creative Commons Attribution-Sharealike 3.0 license.
 * See http://creativecommons.org/licenses/by-sa/3.0/ or the included license/LICENSE.TXT file for more information.
@@ -57,8 +57,14 @@ RDA_isr()
 	newCmd = 1;
 }
 
-// Function puts all the GPIB pins into a high impedance "floating" state.
-void all_pins_high() {
+// Puts all the GPIB pins into their correct initial states.
+void prep_gpib_pins() {
+	output_low(TE); // Disables talking on data and handshake lines
+	output_high(PE); // Enable dataline pullup resistors
+
+	output_high(SC); // Allows transmit on REN and IFC
+	output_low(DC); // Transmit ATN and receive SRQ
+
 	output_float(DIO1);
 	output_float(DIO2);
 	output_float(DIO3);
@@ -68,22 +74,22 @@ void all_pins_high() {
 	output_float(DIO7);
 	output_float(DIO8);
 	
+	output_high(ATN);
 	output_float(EOI);
 	output_float(DAV);
-	output_float(NRFD);
-	output_float(NDAC);
-	output_float(IFC);
+	output_low(NRFD);
+	output_low(NDAC);
+	output_high(IFC);
 	output_float(SRQ);
-	output_float(ATN);
-	output_float(REN);
+	output_high(REN);
 }
 
 void gpib_init() {
 	
-	all_pins_high(); // Put all the pins into high-impedance mode
+	prep_gpib_pins(); // Put all the pins into high-impedance mode
 	
-	output_low(NRFD); // ?? Needed ??
-	output_float(NDAC); // ?? Needed ??
+	//output_low(NRFD); // ?? Needed ??
+	output_high(NDAC); // ?? Needed ??
 	
 }
 
@@ -120,7 +126,7 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 	int i; // Loop counter variable
 	
 	if(attention) // If byte is a gpib bus command
-	{
+	{		
 		output_low(ATN); // Assert the ATN line, informing all this is a cmd byte.
 	}
 	
@@ -129,8 +135,10 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 		length = strlen((char*)bytes); // Calculate the number of bytes to be sent
 	}
 	
-	output_float(EOI);
-	output_float(DAV);
+	output_high(TE); // Enable talking
+	
+	output_high(EOI);
+	output_high(DAV);
 	output_float(NRFD);
 	
 	for( i = 0 ; i < length ; i++ ) { //Loop through each character, write to bus
@@ -152,47 +160,47 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 #else
 		while(input(NDAC)){} 
 #endif
-		
+
 		// Put the target bit on the data lines
 		if(a&0x01) {
 			output_low(DIO1);
 		} else {
-			output_float(DIO1);
+			output_high(DIO1);
 		}
 		if(a&0x02) {
 			output_low(DIO2);
 		} else {
-			output_float(DIO2);
+			output_high(DIO2);
 		}
 		if(a&0x04) {
 			output_low(DIO3);
 		} else {
-			output_float(DIO3);
+			output_high(DIO3);
 		}
 		if(a&0x08) {
 			output_low(DIO4);
 		} else {
-			output_float(DIO4);
+			output_high(DIO4);
 		}
 		if(a&0x10) {
 			output_low(DIO5);
 		} else {
-			output_float(DIO5);
+			output_high(DIO5);
 		}
 		if(a&0x20) {
 			output_low(DIO6);
 		} else {
-			output_float(DIO6);
+			output_high(DIO6);
 		}
 		if(a&0x40) {
 			output_low(DIO7);
 		} else {
-			output_float(DIO7);
+			output_high(DIO7);
 		}
 		if(a&0x80) {
 			output_low(DIO8);
 		} else {
-			output_float(DIO8);
+			output_high(DIO8);
 		}
 	
 		output_float(NRFD);
@@ -235,7 +243,9 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 		output_float(DAV); // Byte has been accepted by all, indicate byte is no longer valid
 		
 	} // Finished outputing all bytes to listeners
-	
+
+	output_low(TE); // Disable talking on datalines
+
 	// Float all data lines 
 	output_float(DIO1);
 	output_float(DIO2);
@@ -245,12 +255,15 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 	output_float(DIO6);
 	output_float(DIO7);
 	output_float(DIO8);
-	
+
 	if(attention) { // If byte was a gpib cmd byte
 		output_float(ATN); // Release ATN line
 	}
 	
+	output_float(DAV);
 	output_float(EOI);
+	output_high(NDAC);
+	output_high(NRFD);
 	
 	return 0;
 	
@@ -259,9 +272,9 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 char gpib_receive( char *byt ) {
 	char a = 0; // Storage for received character
 	char eoiStatus; // Returns 0x00 or 0x01 depending on status of EOI line
-	
-	// Float NRFD, telling the talker we are ready for the byte
-	output_float(NRFD);
+
+	// Raise NRFD, telling the talker we are ready for the byte
+	output_high(NRFD);
 	
 	// Assert NDAC informing the talker we have not accepted the byte yet
 	output_low(NDAC);
