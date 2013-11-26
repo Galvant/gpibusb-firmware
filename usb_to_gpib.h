@@ -20,14 +20,19 @@
 #define DIO7 PIN_B6
 #define DIO8 PIN_B7
 
-#define REN PIN_A0
-#define EOI PIN_A1
-#define DAV PIN_A2
-#define NRFD PIN_A3
-#define NDAC PIN_A4
-#define ATN PIN_A5
-#define SRQ PIN_E0
-#define IFC PIN_E1
+#define REN PIN_E1
+#define EOI PIN_A2
+#define DAV PIN_A3
+#define NRFD PIN_A4
+#define NDAC PIN_A5
+#define ATN PIN_A1
+#define SRQ PIN_A0
+#define IFC PIN_E0
+
+#define SC PIN_D7
+#define TE PIN_D6
+#define PE PIN_D5
+#define DC PIN_D4
 
 #define LED_ERROR PIN_C5
 
