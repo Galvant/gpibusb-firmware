@@ -60,7 +60,8 @@ RDA_isr()
 // Puts all the GPIB pins into their correct initial states.
 void prep_gpib_pins() {
 	output_low(TE); // Disables talking on data and handshake lines
-	output_high(PE); // Enable dataline pullup resistors
+	//output_high(PE); // Enable dataline pullup resistors
+	output_low(PE);
 
 	output_high(SC); // Allows transmit on REN and IFC
 	output_low(DC); // Transmit ATN and receive SRQ
@@ -124,6 +125,8 @@ char gpib_write( char *bytes, int length ) {
 char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 	char a; // Storage variable for the current character
 	int i; // Loop counter variable
+
+	output_high(PE);
 	
 	if(attention) // If byte is a gpib bus command
 	{		
@@ -226,6 +229,8 @@ char _gpib_write( char *bytes, int length, BOOLEAN attention) {
 	output_float(EOI);
 	output_high(NDAC);
 	output_high(NRFD);
+
+	output_low(PE);
 	
 	return 0;
 	
