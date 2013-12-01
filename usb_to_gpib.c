@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include "usb_to_gpib.h"
 
-char version[10] = "3";
+char version[10] = "4";
 
 char cmd_buf[64], buf[64], newBuf[64];
 int partnerAddress, myAddress;
