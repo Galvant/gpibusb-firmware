@@ -444,7 +444,7 @@ void main(void) {
 	char getCmdBuf[5] = "+get";
 	char stripBuf[8] = "+strip:";
 	char versionBuf[5] = "+ver";
-	char autoReadBuf[11] = "+autoread:"
+	char autoReadBuf[11] = "+autoread:";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
