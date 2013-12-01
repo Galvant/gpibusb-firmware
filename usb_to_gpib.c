@@ -363,8 +363,10 @@ char gpib_read(void) {
 		do {
 			eoiFound = gpib_receive(&readCharacter);
 			if(eoiFound==0xff){return 1;}
-			readBuf[i] = readCharacter; // Copy the read char into the buffer
-			i++;
+			if((readCharacter != eos) || (eoiFound)){ // Check for EOM char
+			    readBuf[i] = readCharacter; //Copy the read char into the buffer
+			    i++;
+			}
 			if(i == 100){
 				for(j=0;j<100;++j){
 					putc(*bufPnt);
@@ -387,8 +389,10 @@ char gpib_read(void) {
 		do {
 			eoiFound = gpib_receive(&readCharacter);
 			if(eoiFound==0xff){return 1;}
-			readBuf[i] = readCharacter; // Copy the read char into the buffer
-			i++;
+			if(readCharacter != eos){ // Check for EOM char
+			    readBuf[i] = readCharacter; //Copy the read char into the buffer
+			    i++;
+			}
 			if(i == 100){
 				for(j=0;j<100;++j){
 					putc(*bufPnt);
