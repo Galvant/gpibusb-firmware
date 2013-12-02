@@ -413,9 +413,9 @@ char gpib_read(void) {
 		}
 	}
 	
-	if(eos != "\r"){
+	//if(eos != "\r"){
 		printf("\r"); // Include a CR to signal end of serial transmission
-	}
+	//}
 	
 	#ifdef VERBOSE_DEBUG
 	printf("gpib_read loop end\n\r");
