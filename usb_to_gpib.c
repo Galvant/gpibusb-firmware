@@ -37,7 +37,7 @@
 
 char version[10] = "4";
 
-char cmd_buf[64], buf[64], newBuf[64];
+char cmd_buf[10], buf[1000];
 int partnerAddress, myAddress;
 
 char newCmd = 0;
