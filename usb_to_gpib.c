@@ -449,6 +449,7 @@ void main(void) {
 	char stripBuf[8] = "+strip:";
 	char versionBuf[5] = "+ver";
 	char autoReadBuf[11] = "+autoread:";
+	char resetBuf[7] = "+reset";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -472,6 +473,11 @@ void main(void) {
 	// Start all the GPIB related stuff
 	gpib_init(); // Initialize the GPIB Bus
 	writeError = gpib_controller_assign(0x00);
+	
+	// If no instruments are connected, keep rebooting until there is
+	if(writeError == 1) {
+	    reset_cpu();
+    }
 	
 	output_low(LED_ERROR); // Turn off the error LED
 	
@@ -537,6 +543,9 @@ void main(void) {
 				else if(strncmp((char*)buf,(char*)autoReadBuf,10)==0) { 
 					autoread = atoi((char*)(&(buf[10])));
 				}
+				else if(strncmp((char*)buf,(char*)resetBuf,6)==0) { 
+					reset_cpu();
+				}
 				else{
 				    printf("Unrecognized command.\n\r");
 				}
@@ -575,11 +584,13 @@ void main(void) {
 				    if ((strchr((char*)buf, '?') != NULL) && !(writeError)) { 
 					    if(gpib_read()){
 						    printf("Read error occured.\n\r");
+						    reset_cpu();
 					    }
 				    }
 				    else if(writeError){
 					    writeError = 0;
 					    printf("Write error occured.\n\r");
+					    reset_cpu();
 				    }
 				}
 				
