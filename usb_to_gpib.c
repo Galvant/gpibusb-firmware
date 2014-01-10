@@ -44,6 +44,8 @@ char newCmd = 0;
 char eos = 1; // Default end of string character.
 char eoiUse = 1; // By default, we are using EOI to signal end of 
                  // msg from instrument
+char debug = 0; // enable or disable read&write error messages
+
 byte strip = 0;
 char autoread = 1;
 
@@ -172,7 +174,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention) {
 		timeout = seconds + timeoutPeriod;
 		while(input(NDAC) && (seconds <= timeout)) {
 			if(seconds >= timeout) {
-				printf("Timeout: Waiting for NDAC to go low while writing\n");
+			    if (debug == 1) {
+				    printf("Timeout: Waiting for NDAC to go low while writing\n");
+				}
 				return 1;
 			}
 		}
@@ -192,7 +196,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention) {
 		timeout = seconds + timeoutPeriod;
 		while(!(input(NRFD)) && (seconds <= timeout)) {
 			if(seconds >= timeout) {
-				printf("Timeout: Waiting for NRFD to go high while writing\n");
+			    if (debug == 1) {
+				    printf("Timeout: Waiting for NRFD to go high while writing\n");
+			    }
 				return 1;
 			}
 		}
@@ -213,7 +219,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention) {
 		timeout = seconds + timeoutPeriod;
 		while(!(input(NDAC)) && (seconds <= timeout)) {
 			if(seconds >= timeout) {
-				printf("Timeout: Waiting for NDAC to go high while writing\n");
+			    if (debug == 1) {
+			        printf("Timeout: Waiting for NDAC to go high while writing\n");
+			    }
 				return 1;
 			}
 		}
@@ -270,7 +278,9 @@ char gpib_receive(char *byt) {
 	timeout = seconds + timeoutPeriod;
 	while(input(DAV) && (seconds <= timeout)) {
 		if(seconds >= timeout) {
-			printf("Timeout: Waiting for DAV to go low while reading\n");
+		    if (debug == 1) {
+			    printf("Timeout: Waiting for DAV to go low while reading\n");
+		    }
 			return 0xff;
 		}
 	}
@@ -293,7 +303,9 @@ char gpib_receive(char *byt) {
 	timeout = seconds + timeoutPeriod;
 	while(!(input(DAV)) && (seconds<=timeout) ) {
 		if(seconds >= timeout) {
-			printf("Timeout: Waiting for DAV to go high while reading\n");
+		    if (debug == 1){
+			    printf("Timeout: Waiting for DAV to go high while reading\n");
+		    }
 			return 0xff;
 		}
 	}
@@ -450,6 +462,7 @@ void main(void) {
 	char versionBuf[5] = "+ver";
 	char autoReadBuf[11] = "+autoread:";
 	char resetBuf[7] = "+reset";
+	char debugBuf[8] = "+debug:";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -514,7 +527,7 @@ void main(void) {
 				}
 				else if(strncmp((char*)buf,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read()){
-						printf("Read error occured.\n\r");
+					    if (debug == 1) {printf("Read error occured.\n\r");}
 					}
 				}
 				else if(strncmp((char*)buf,(char*)testBuf,5)==0) { 
@@ -545,6 +558,9 @@ void main(void) {
 				}
 				else if(strncmp((char*)buf,(char*)resetBuf,6)==0) { 
 					reset_cpu();
+				}
+				else if(strncmp((char*)buf,(char*)debugBuf,7)==0) { 
+					debug = atoi((char*)(&(buf[7])));
 				}
 				else{
 				    printf("Unrecognized command.\n\r");
@@ -583,13 +599,13 @@ void main(void) {
 				if(autoread){
 				    if ((strchr((char*)buf, '?') != NULL) && !(writeError)) { 
 					    if(gpib_read()){
-						    printf("Read error occured.\n\r");
+					        if (debug == 1){printf("Read error occured.\n\r");}
 						    reset_cpu();
 					    }
 				    }
 				    else if(writeError){
 					    writeError = 0;
-					    printf("Write error occured.\n\r");
+					    if (debug == 1){printf("Write error occured.\n\r");}
 					    reset_cpu();
 				    }
 				}
