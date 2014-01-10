@@ -528,6 +528,7 @@ void main(void) {
 				else if(strncmp((char*)buf,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read()){
 					    if (debug == 1) {printf("Read error occured.\n\r");}
+						reset_cpu();
 					}
 				}
 				else if(strncmp((char*)buf,(char*)testBuf,5)==0) { 
