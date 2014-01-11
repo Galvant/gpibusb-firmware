@@ -26,7 +26,7 @@
 */
 
 #include <18F4520.h>
-#fuses HS, NOPROTECT, NOLVP, WDT, WDT512
+#fuses HS, NOPROTECT, NOLVP, WDT, WDT4096
 #use delay(clock=18432000)
 #use rs232(baud=460800,uart1)
 
@@ -49,15 +49,15 @@ char debug = 0; // enable or disable read&write error messages
 byte strip = 0;
 char autoread = 1;
 
-#define INTS_PER_SECOND 3
+#define INTS_PER_SECOND 110
 byte int_count, timeoutPeriod, timeout;
-int seconds;
+unsigned int seconds = 0;
 
 #define WITH_TIMEOUT
 #define WITH_WDT
 //#define VERBOSE_DEBUG
 
-#int_rtcc
+#int_timer2
 void clock_isr() {
 	if(--int_count==0) {
 		++seconds;
@@ -173,6 +173,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention) {
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
 		while(input(NDAC) && (seconds <= timeout)) {
+		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
 				    printf("Timeout: Waiting for NDAC to go low while writing\n");
@@ -195,6 +196,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention) {
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
 		while(!(input(NRFD)) && (seconds <= timeout)) {
+		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
 				    printf("Timeout: Waiting for NRFD to go high while writing\n");
@@ -218,6 +220,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention) {
 		seconds = 0;
 		timeout = seconds + timeoutPeriod;
 		while(!(input(NDAC)) && (seconds <= timeout)) {
+		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
 			        printf("Timeout: Waiting for NDAC to go high while writing\n");
@@ -275,8 +278,10 @@ char gpib_receive(char *byt) {
 	
 	// Wait for DAV to go low (talker informing us the byte is ready)
 #ifdef WITH_TIMEOUT
+    seconds = 0;
 	timeout = seconds + timeoutPeriod;
 	while(input(DAV) && (seconds <= timeout)) {
+	    restart_wdt();
 		if(seconds >= timeout) {
 		    if (debug == 1) {
 			    printf("Timeout: Waiting for DAV to go low while reading\n");
@@ -300,8 +305,10 @@ char gpib_receive(char *byt) {
 
 	// Wait for DAV to go high (talker knows that we have read the byte)
 #ifdef WITH_TIMEOUT
+    seconds = 0;
 	timeout = seconds + timeoutPeriod;
 	while(!(input(DAV)) && (seconds<=timeout) ) {
+	    restart_wdt();
 		if(seconds >= timeout) {
 		    if (debug == 1){
 			    printf("Timeout: Waiting for DAV to go high while reading\n");
@@ -449,7 +456,7 @@ char gpib_read(void) {
 
 void main(void) {
 	char compareBuf[10];
-	char writeError;
+	char writeError = 0;
 	
 	char addressBuf[4] = "+a:";
 	char timeoutBuf[4] = "+t:";
@@ -475,9 +482,8 @@ void main(void) {
 	// Setup the timer
 	int_count=INTS_PER_SECOND;
 	set_rtcc(0);
-	setup_counters(RTCC_INTERNAL, RTCC_DIV_16);
-	enable_interrupts(INT_RTCC);
-	enable_interrupts(INT_RDA);
+	setup_timer_2(T2_DIV_BY_16,250,10);
+	enable_interrupts(INT_TIMER2);
 	enable_interrupts(GLOBAL);
 #endif
 	
@@ -491,11 +497,39 @@ void main(void) {
 	if(writeError == 1) {
 	    reset_cpu();
     }
-	
+
+    /*
+    * The following little block helps provide some visual feedback as to which
+    * stage of the startup process the microcontroller is in. This is because
+    * during testing I found that enabling the RDA interrupt would cause issues
+    * on my dev system (ubuntu gnome edition 13.10 64bit) when first plugged
+    * into the computer. This, in combination with the fact that the serial
+    * port is unaccessable to my user account for approx 30sec after initial
+    * enumeration (but is able to be opened by root) leads me to believe that
+    * some update to ubuntu or the linux kernel or something is probing newly
+    * connected usb->serial adapters. Whatever it is that my PC is sending is
+    * causing the adapater to have a fit. This is probably due to a high volume
+    * of RDA interrupts and the system is unable to process them before the 
+    * next. I imagine maybe that in the end, "buf" is getting messed up, but
+    * in the end the WDT solves the lockup issue.
+    *
+    * Note this problem is only on initial USB connection and not when pushing 
+    * the reset button.
+    */
 	output_low(LED_ERROR); // Turn off the error LED
+	restart_wdt();
+	delay_ms(100);
+	restart_wdt();
+	output_high(LED_ERROR);
+	restart_wdt();
+	delay_ms(100);
+	restart_wdt();
+	enable_interrupts(INT_RDA);
+	restart_wdt();
+	output_low(LED_ERROR);
 	
 	#ifdef VERBOSE_DEBUG
-	switch ( restart_cause() )
+	switch (restart_cause())
 	{
 		case WDT_TIMEOUT:
 		{
@@ -516,18 +550,18 @@ void main(void) {
 #ifdef WITH_WDT
 		restart_wdt();
 #endif
-		
+
 		if(newCmd) { // If PC is sending input
 			newCmd = 0;	
 			
 			if(buf[0] == '+') { // Controller commands start with a +
-			
 				if(strncmp((char*)buf,(char*)addressBuf,3)==0) { 
 					partnerAddress = atoi( (char*)(&(buf[3])) ); // Parse out the GPIB address
 				}
 				else if(strncmp((char*)buf,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read()){
 					    if (debug == 1) {printf("Read error occured.\n\r");}
+					    delay_ms(1);
 						reset_cpu();
 					}
 				}
@@ -557,7 +591,8 @@ void main(void) {
 				else if(strncmp((char*)buf,(char*)autoReadBuf,10)==0) { 
 					autoread = atoi((char*)(&(buf[10])));
 				}
-				else if(strncmp((char*)buf,(char*)resetBuf,6)==0) { 
+				else if(strncmp((char*)buf,(char*)resetBuf,6)==0) {
+				    delay_ms(1); 
 					reset_cpu();
 				}
 				else if(strncmp((char*)buf,(char*)debugBuf,7)==0) { 
@@ -569,7 +604,6 @@ void main(void) {
 				
 			} 
 			else { // Not an internal command, send to bus
-				
 				// Command all talkers and listeners to stop
 				cmd_buf[0] = CMD_UNT;
 				writeError = writeError || gpib_cmd(cmd_buf, 1);
@@ -601,18 +635,20 @@ void main(void) {
 				    if ((strchr((char*)buf, '?') != NULL) && !(writeError)) { 
 					    if(gpib_read()){
 					        if (debug == 1){printf("Read error occured.\n\r");}
+					        delay_ms(1);
 						    reset_cpu();
 					    }
 				    }
 				    else if(writeError){
 					    writeError = 0;
 					    if (debug == 1){printf("Write error occured.\n\r");}
+					    delay_ms(1);
 					    reset_cpu();
 				    }
 				}
 				
 			}
-			
+
 		} // End of receiving PC input
 	} // End of main execution loop
 
