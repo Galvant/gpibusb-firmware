@@ -37,10 +37,10 @@
 
 char version[10] = "5";
 
-const int buf_size = 1000;
-char cmd_buf[10], buf[buf_size];
-int buf_out = 0;
-int buf_in = 0;
+const unsigned int buf_size = 1023;
+char cmd_buf[10], buf[buf_size+77];
+unsigned int buf_out = 0;
+unsigned int buf_in = 0;
 
 int partnerAddress, myAddress;
 
@@ -74,12 +74,15 @@ RDA_isr()
 {
 	gets(&(buf[buf_in]));
 	buf_in += (strlen(&(buf[buf_in])) + 1);
-	newCmd = 1;
+	if (buf_in >= buf_size)
+	    buf_in = 0;
 }
 
 char buf_get(char *pnt) {
     pnt = &(buf[buf_out]);
     buf_out += (strlen(&(buf[buf_out])) + 1);
+    if (buf_out >= buf_size)
+        buf_out = 0;
     return pnt;
 }
 
