@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include "usb_to_gpib.h"
 
-char version[10] = "5";
+const unsigned int version = 5;
 
 const unsigned int buf_size = 1023;
 char cmd_buf[10], buf[buf_size+77];
@@ -597,7 +597,7 @@ void main(void) {
 					strip = atoi((char*)(buf_pnt+7)); // Parse out the end of string byte
 				}
 				else if(strncmp((char*)buf_pnt,(char*)versionBuf,4)==0) { 
-					printf("%s\r", version);
+					printf("%i\r", version);
 				}
 				else if(strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) { 
 					// Send a Group Execute Trigger (GET) bus command
