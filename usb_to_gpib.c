@@ -35,9 +35,13 @@
 #include <stdlib.h>
 #include "usb_to_gpib.h"
 
-char version[10] = "4";
+char version[10] = "5";
 
-char cmd_buf[10], buf[1000];
+const int buf_size = 1000;
+char cmd_buf[10], buf[buf_size];
+int buf_out = 0;
+int buf_in = 0;
+
 int partnerAddress, myAddress;
 
 char newCmd = 0;
@@ -68,8 +72,15 @@ void clock_isr() {
 #int_rda
 RDA_isr()
 {
-	gets(buf);
+	gets(&(buf[buf_in]));
+	buf_in += (strlen(&(buf[buf_in])) + 1);
 	newCmd = 1;
+}
+
+char buf_get(char *pnt) {
+    pnt = &(buf[buf_out]);
+    buf_out += (strlen(&(buf[buf_out])) + 1);
+    return pnt;
 }
 
 // Puts all the GPIB pins into their correct initial states.
@@ -457,6 +468,7 @@ char gpib_read(void) {
 void main(void) {
 	char compareBuf[10];
 	char writeError = 0;
+	char *buf_pnt = &buf[0];
 	
 	char addressBuf[4] = "+a:";
 	char timeoutBuf[4] = "+t:";
@@ -551,52 +563,53 @@ void main(void) {
 		restart_wdt();
 #endif
 
-		if(newCmd) { // If PC is sending input
-			newCmd = 0;	
+		//if(newCmd) { // If PC is sending input
+		if(buf_in != buf_out) {
+			buf_pnt = buf_get(buf_pnt);
 			
-			if(buf[0] == '+') { // Controller commands start with a +
-				if(strncmp((char*)buf,(char*)addressBuf,3)==0) { 
-					partnerAddress = atoi( (char*)(&(buf[3])) ); // Parse out the GPIB address
+			if(*buf_pnt == '+') { // Controller commands start with a +
+				if(strncmp((char*)buf_pnt,(char*)addressBuf,3)==0) { 
+					partnerAddress = atoi( (char*)(buf_pnt+3) ); // Parse out the GPIB address
 				}
-				else if(strncmp((char*)buf,(char*)readCmdBuf,5)==0) { 
+				else if(strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read()){
 					    if (debug == 1) {printf("Read error occured.\n\r");}
 					    delay_ms(1);
 						reset_cpu();
 					}
 				}
-				else if(strncmp((char*)buf,(char*)testBuf,5)==0) { 
+				else if(strncmp((char*)buf_pnt,(char*)testBuf,5)==0) { 
 					printf("testing\n\r");
 				}
-				else if(strncmp((char*)buf,(char*)timeoutBuf,3)==0) { 
-					timeoutPeriod = atoi((char*)(&(buf[3]))); // Parse out the timeout period
+				else if(strncmp((char*)buf_pnt,(char*)timeoutBuf,3)==0) { 
+					timeoutPeriod = atoi((char*)(buf_pnt+3)); // Parse out the timeout period
 				}
-				else if(strncmp((char*)buf,(char*)eosBuf,5)==0) { 
-					eos = atoi((char*)(&(buf[5]))); // Parse out the end of string byte
+				else if(strncmp((char*)buf_pnt,(char*)eosBuf,5)==0) { 
+					eos = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 				}
-				else if(strncmp((char*)buf,(char*)eoiBuf,5)==0) { 
-					eoiUse = atoi((char*)(&(buf[5]))); // Parse out the end of string byte
+				else if(strncmp((char*)buf_pnt,(char*)eoiBuf,5)==0) { 
+					eoiUse = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 				}
-				else if(strncmp((char*)buf,(char*)stripBuf,7)==0) { 
-					strip = atoi((char*)(&(buf[7]))); // Parse out the end of string byte
+				else if(strncmp((char*)buf_pnt,(char*)stripBuf,7)==0) { 
+					strip = atoi((char*)(buf_pnt+7)); // Parse out the end of string byte
 				}
-				else if(strncmp((char*)buf,(char*)versionBuf,4)==0) { 
+				else if(strncmp((char*)buf_pnt,(char*)versionBuf,4)==0) { 
 					printf("%s\r", version);
 				}
-				else if(strncmp((char*)buf,(char*)getCmdBuf,4)==0) { 
+				else if(strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) { 
 					// Send a Group Execute Trigger (GET) bus command
 					cmd_buf[0] = CMD_GET;
 					gpib_cmd(cmd_buf, 1);
 				}
-				else if(strncmp((char*)buf,(char*)autoReadBuf,10)==0) { 
-					autoread = atoi((char*)(&(buf[10])));
+				else if(strncmp((char*)buf_pnt,(char*)autoReadBuf,10)==0) { 
+					autoread = atoi((char*)(buf_pnt+10));
 				}
-				else if(strncmp((char*)buf,(char*)resetBuf,6)==0) {
+				else if(strncmp((char*)buf_pnt,(char*)resetBuf,6)==0) {
 				    delay_ms(1); 
 					reset_cpu();
 				}
-				else if(strncmp((char*)buf,(char*)debugBuf,7)==0) { 
-					debug = atoi((char*)(&(buf[7])));
+				else if(strncmp((char*)buf_pnt,(char*)debugBuf,7)==0) { 
+					debug = atoi((char*)(buf_pnt+7));
 				}
 				else{
 				    printf("Unrecognized command.\n\r");
@@ -620,19 +633,21 @@ void main(void) {
 				
 				// Send out command to the bus
 				#ifdef VERBOSE_DEBUG
-				printf("gpib_write: %s\n\r",buf);
+				printf("gpib_write: %s\n\r",buf_pnt);
 				#endif
-				writeError = writeError || gpib_write(buf, 0);
+				writeError = writeError || gpib_write(buf_pnt, 0);
 				
+				
+				// TODO: Make sure eos still works here
 				if(eoiUse == 0) { // If we are not using EOI, need to output 
 				                  // termination byte to inst
-					buf[0] = eos;
-					writeError = gpib_write(buf, 1);
+					//buf[0] = eos;
+					writeError = gpib_write(&eos, 1);
 				}
 				
 				// If cmd contains a question mark -> is a query
 				if(autoread){
-				    if ((strchr((char*)buf, '?') != NULL) && !(writeError)) { 
+				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
 					    if(gpib_read()){
 					        if (debug == 1){printf("Read error occured.\n\r");}
 					        delay_ms(1);
