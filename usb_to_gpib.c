@@ -580,7 +580,7 @@ void main(void) {
 				if(strncmp((char*)buf_pnt,(char*)addressBuf,3)==0) { 
 					partnerAddress = atoi((char*)(buf_pnt+3)); // Parse out the GPIB address
 				}
-				// ++addr
+				// ++addr N
 				else if(strncmp((char*)buf_pnt,(char*)addrBuf,6)==0) {
 				    if (*(buf_pnt+6) == 0x00) {
 				        printf("%i\r", partnerAddress);
@@ -615,6 +615,16 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)eoiBuf,5)==0) { 
 					eoiUse = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 				}
+				// ++eoi {0|1}
+				// TODO: make this command used only for writing and not reading
+				else if(strncmp((char*)buf_pnt+1,(char*)eoiBuf,4)==0) { 
+					if (*(buf_pnt+5) == 0x00) {
+				        printf("%i\r", eoiUse);
+				    }
+				    else if (*(buf_pnt+5) == 32) {
+				        eoiUse = atoi((char*)(buf_pnt+6));
+				    }
+				}
 				// +strip:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)stripBuf,7)==0) { 
 					strip = atoi((char*)(buf_pnt+7)); // Parse out the end of string byte
@@ -633,7 +643,7 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)autoReadBuf,10)==0) { 
 					autoread = atoi((char*)(buf_pnt+10));
 				}
-				// ++auto{0|1}
+				// ++auto {0|1}
 				else if(strncmp((char*)buf_pnt,(char*)autoBuf,6)==0) {
 				    if (*(buf_pnt+6) == 0x00) {
 				        printf("%i\r", autoRead);
