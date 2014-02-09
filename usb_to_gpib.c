@@ -45,7 +45,8 @@ unsigned int buf_in = 0;
 int partnerAddress, myAddress;
 
 char newCmd = 0;
-char eos = 1; // Default end of string character.
+char eos = 10; // Default end of string character.
+char eos_string[3] = "\n";
 char eoiUse = 1; // By default, we are using EOI to signal end of 
                  // msg from instrument
 char debug = 0; // enable or disable read&write error messages
@@ -589,6 +590,8 @@ void main(void) {
 				}
 				else if(strncmp((char*)buf_pnt,(char*)eosBuf,5)==0) { 
 					eos = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
+					eos_string[0] = eos;
+					eos_string[1] = 0x00;
 				}
 				else if(strncmp((char*)buf_pnt,(char*)eoiBuf,5)==0) { 
 					eoiUse = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
@@ -645,7 +648,7 @@ void main(void) {
 				if(eoiUse == 0) { // If we are not using EOI, need to output 
 				                  // termination byte to inst
 					//buf[0] = eos;
-					writeError = gpib_write(&eos, 1);
+					writeError = gpib_write(eos_string, 1);
 				}
 				
 				// If cmd contains a question mark -> is a query
