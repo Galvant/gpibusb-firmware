@@ -470,10 +470,10 @@ char gpib_read(void) {
 }
 
 void main(void) {
-	char compareBuf[10];
 	char writeError = 0;
 	char *buf_pnt = &buf[0];
 	
+	// Original Command Set
 	char addressBuf[4] = "+a:";
 	char timeoutBuf[4] = "+t:";
 	char eosBuf[6] = "+eos:";
@@ -486,6 +486,11 @@ void main(void) {
 	char autoReadBuf[11] = "+autoread:";
 	char resetBuf[7] = "+reset";
 	char debugBuf[8] = "+debug:";
+	
+	// Prologix Compatible Command Set
+	char addrBuf[7] = "++addr";
+	char autoBuf[7] = "++auto";
+	char clrBuf[6] = "++clr";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -567,14 +572,24 @@ void main(void) {
 		restart_wdt();
 #endif
 
-		//if(newCmd) { // If PC is sending input
 		if(buf_in != buf_out) {
 			buf_pnt = buf_get(buf_pnt);
 			
 			if(*buf_pnt == '+') { // Controller commands start with a +
+			    // +a:N
 				if(strncmp((char*)buf_pnt,(char*)addressBuf,3)==0) { 
-					partnerAddress = atoi( (char*)(buf_pnt+3) ); // Parse out the GPIB address
+					partnerAddress = atoi((char*)(buf_pnt+3)); // Parse out the GPIB address
 				}
+				// ++addr
+				else if(strncmp((char*)buf_pnt,(char*)addrBuf,6)==0) {
+				    if (*(buf_pnt+6) == 0x00) {
+				        printf("%i\r", partnerAddress);
+				    }
+				    else if (*(buf_pnt+6) == 32) {
+				        partnerAddress = atoi((char*)(buf_pnt+7));
+				    }
+				}
+				// +read
 				else if(strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read()){
 					    if (debug == 1) {printf("Read error occured.\n\r");}
@@ -582,40 +597,73 @@ void main(void) {
 						reset_cpu();
 					}
 				}
+				// +test
 				else if(strncmp((char*)buf_pnt,(char*)testBuf,5)==0) { 
 					printf("testing\n\r");
 				}
+				// +t:N
 				else if(strncmp((char*)buf_pnt,(char*)timeoutBuf,3)==0) { 
 					timeoutPeriod = atoi((char*)(buf_pnt+3)); // Parse out the timeout period
 				}
+				// +eos:N
 				else if(strncmp((char*)buf_pnt,(char*)eosBuf,5)==0) { 
 					eos = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 					eos_string[0] = eos;
 					eos_string[1] = 0x00;
 				}
+				// +eoi:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)eoiBuf,5)==0) { 
 					eoiUse = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 				}
+				// +strip:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)stripBuf,7)==0) { 
 					strip = atoi((char*)(buf_pnt+7)); // Parse out the end of string byte
 				}
+				// +ver
 				else if(strncmp((char*)buf_pnt,(char*)versionBuf,4)==0) { 
 					printf("%i\r", version);
 				}
+				// +get
 				else if(strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) { 
 					// Send a Group Execute Trigger (GET) bus command
 					cmd_buf[0] = CMD_GET;
 					gpib_cmd(cmd_buf, 1);
 				}
+				// +autoread:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)autoReadBuf,10)==0) { 
 					autoread = atoi((char*)(buf_pnt+10));
 				}
+				// ++auto{0|1}
+				else if(strncmp((char*)buf_pnt,(char*)autoBuf,6)==0) {
+				    if (*(buf_pnt+6) == 0x00) {
+				        printf("%i\r", autoRead);
+				    }
+				    else if (*(buf_pnt+6) == 32) {
+				        autoread = atoi((char*)(buf_pnt+7));
+				        if ((autoread != 0) && (autoread != 1)) {
+				            autoread = 1; // If non-bool sent, set to enable
+				        }
+				    }
+				}
+				// +reset
 				else if(strncmp((char*)buf_pnt,(char*)resetBuf,6)==0) {
 				    delay_ms(1); 
 					reset_cpu();
 				}
+				// +debug:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)debugBuf,7)==0) { 
 					debug = atoi((char*)(buf_pnt+7));
+				}
+				// ++clr
+				else if(strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) {
+				    // This command is special in that we must
+				    // address a specific instrument.
+				    cmd_buf[0] = CMD_UNL;
+				    writeError = writeError || gpib_cmd(cmd_buf, 1);
+				    cmd_buf[0] = partnerAddress + 0x20;
+				    writeError = writeError || gpib_cmd(cmd_buf, 1);
+				    cmd_buf[0] = CMD_SDC;
+					writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				else{
 				    if (debug == 1) {printf("Unrecognized command.\n\r");}
