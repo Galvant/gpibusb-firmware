@@ -615,7 +615,7 @@ void main(void) {
 					debug = atoi((char*)(buf_pnt+7));
 				}
 				else{
-				    printf("Unrecognized command.\n\r");
+				    if (debug == 1) {printf("Unrecognized command.\n\r");}
 				}
 				
 			} 
