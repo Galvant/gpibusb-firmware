@@ -141,15 +141,15 @@ char gpib_controller_assign(int address) {
 
 char gpib_cmd(char *bytes, int length) {
     // Write a GPIB CMD byte to the bus
-	return _gpib_write(bytes, length, 1);
+	return _gpib_write(bytes, length, 1, 0);
 }
 
-char gpib_write(char *bytes, int length) {
+char gpib_write(char *bytes, int length, useEOI) {
     // Write a GPIB data string to the bus
-	return _gpib_write(bytes, length, 0);
+	return _gpib_write(bytes, length, 0, useEOI);
 }
 
-char _gpib_write(char *bytes, int length, BOOLEAN attention) {
+char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
     /* 
     * Write a string of bytes to the bus
     * bytes: array containing characters to be written
@@ -225,7 +225,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention) {
 		while(!(input(NRFD))){}
 #endif
 		
-		if((i==length-1) && !(attention)) { // If last byte in string
+		if((i==length-1) && (useEOI)) { // If last byte in string
 			output_low(EOI); // Assert EOI
 		}
 		
@@ -786,14 +786,17 @@ void main(void) {
 				#ifdef VERBOSE_DEBUG
 				printf("gpib_write: %s\n\r",buf_pnt);
 				#endif
-				writeError = writeError || gpib_write(buf_pnt, 0);
-			    
+				
 				if(eos_code != 3) { // If have an EOS char, need to output 
 				                    // termination byte to inst
-					writeError = gpib_write(eos_string, 0);
+                    writeError = writeError || gpib_write(buf_pnt, 0, 0);
+					writeError = gpib_write(eos_string, 0, eoiUse);
 					#ifdef VERBOSE_DEBUG
 				    printf("eos_string: %s",eos_string);
 				    #endif
+				}
+				else {
+				    writeError = writeError || gpib_write(buf_pnt, 0, 1);
 				}
 				
 				// If cmd contains a question mark -> is a query

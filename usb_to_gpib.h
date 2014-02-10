@@ -43,6 +43,6 @@
 #define CMD_SDC 0x04
 
 extern char gpib_cmd( char *bytes, int length );
-extern char _gpib_write( char *bytes, int length, BOOLEAN attention);
+extern char _gpib_write( char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI);
 
 extern char gpib_receive( char *byt );
