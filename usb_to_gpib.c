@@ -773,9 +773,7 @@ void main(void) {
 				printf("gpib_write: %s\n\r",buf_pnt);
 				#endif
 				writeError = writeError || gpib_write(buf_pnt, 0);
-				
-				
-				// TODO: Make sure eos still works here
+			    
 				if(eoiUse == 0) { // If we are not using EOI, need to output 
 				                  // termination byte to inst
 					//buf[0] = eos;
