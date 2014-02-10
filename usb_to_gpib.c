@@ -788,10 +788,12 @@ void main(void) {
 				#endif
 				writeError = writeError || gpib_write(buf_pnt, 0);
 			    
-				if(eoiUse == 0) { // If we are not using EOI, need to output 
-				                  // termination byte to inst
-					//buf[0] = eos;
+				if(eos_code != 3) { // If have an EOS char, need to output 
+				                    // termination byte to inst
 					writeError = gpib_write(eos_string, 0);
+					#ifdef VERBOSE_DEBUG
+				    printf("eos_string: %s",eos_string);
+				    #endif
 				}
 				
 				// If cmd contains a question mark -> is a query
