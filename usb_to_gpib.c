@@ -54,6 +54,7 @@ char debug = 0; // enable or disable read&write error messages
 
 byte strip = 0;
 char autoread = 1;
+char eot_enable = 1;
 
 #define INTS_PER_SECOND 110
 byte int_count, timeoutPeriod, timeout;
@@ -484,9 +485,9 @@ char gpib_read(void) {
 		}
 	}
 	
-	//if(eos != "\r"){
+	if (eot_enable == 1) {
 		printf("\r"); // Include a CR to signal end of serial transmission
-	//}
+	}
 	
 	#ifdef VERBOSE_DEBUG
 	printf("gpib_read loop end\n\r");
@@ -528,6 +529,7 @@ void main(void) {
 	char addrBuf[7] = "++addr";
 	char autoBuf[7] = "++auto";
 	char clrBuf[6] = "++clr";
+	char eotEnableBuf[13] = "++eot_enable";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -747,6 +749,18 @@ void main(void) {
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				    cmd_buf[0] = CMD_SDC;
 					writeError = writeError || gpib_cmd(cmd_buf, 1);
+				}
+				// ++eot_enable {0|1}
+				else if(strncmp((char*)buf_pnt,(char*)eotEnableBuf,12)==0) {
+				    if (*(buf_pnt+12) == 0x00) {
+				        printf("%i\r", eot_enable);
+				    }
+				    else if (*(buf_pnt+12) == 32) {
+				        eot_enable = atoi((char*)(buf_pnt+13));
+				        if ((eot_enable != 0) && (eot_enable != 1)) {
+				            eot_enable = 1; // If non-bool sent, set to enable
+				        }
+				    }
 				}
 				else{
 				    if (debug == 1) {printf("Unrecognized command.\n\r");}
