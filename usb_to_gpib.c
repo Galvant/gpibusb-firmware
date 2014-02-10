@@ -46,7 +46,8 @@ int partnerAddress, myAddress;
 
 char newCmd = 0;
 char eos = 10; // Default end of string character.
-char eos_string[3] = "\n";
+char eos_string[3] = "";
+char eos_code = 3;
 char eoiUse = 1; // By default, we are using EOI to signal end of 
                  // msg from instrument
 char debug = 0; // enable or disable read&write error messages
@@ -611,6 +612,41 @@ void main(void) {
 					eos_string[0] = eos;
 					eos_string[1] = 0x00;
 				}
+				// ++eos {0|1|2|3}
+				else if(strncmp((char*)buf_pnt+1,(char*)eosBuf,4)==0) { 
+					if (*(buf_pnt+5) == 0x00) {
+				        printf("%i\r", eos_code);
+				    }
+				    else if (*(buf_pnt+5) == 32) {
+				        eos_code = atoi((char*)(buf_pnt+6));
+				        switch (eos_code) {
+				            case 0:
+				                eos_code = 0;
+				                eos_string[0] = 13;
+			                    eos_string[1] = 10;
+			                    eos_string[2] = 0x00;
+				                eos = 10;
+				                break;
+			                case 1:
+			                    eos_code = 1;
+			                    eos_string[0] = 13;
+			                    eos_string[1] = 0x00;
+			                    eos = 13;
+			                    break;
+		                    case 2:
+		                        eos_code = 2;
+		                        eos_string[0] = 10;
+		                        eos_string[1] = 0x00;
+		                        eos = 10;
+		                        break;
+	                        default:
+	                            eos_code = 3;
+	                            eos_string[0] = 0x00;
+	                            eos = 0;
+	                            break;
+				        }
+				    }
+				}
 				// +eoi:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)eoiBuf,5)==0) { 
 					eoiUse = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
@@ -706,7 +742,7 @@ void main(void) {
 				if(eoiUse == 0) { // If we are not using EOI, need to output 
 				                  // termination byte to inst
 					//buf[0] = eos;
-					writeError = gpib_write(eos_string, 1);
+					writeError = gpib_write(eos_string, 0);
 				}
 				
 				// If cmd contains a question mark -> is a query
