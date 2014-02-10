@@ -347,10 +347,11 @@ char gpib_receive(char *byt) {
 }
 
 char gpib_read(void) {
-	char readCharacter,eoiFound;
+	char readCharacter,eoiStatus;
 	char readBuf[100];
 	char i = 0, j=0;
-	char errorFound = 0;	
+	char errorFound = 0;
+	boolean reading_done = false;	
 
 	char *bufPnt;
 	bufPnt = &readBuf[0];
@@ -396,11 +397,28 @@ char gpib_read(void) {
 	#endif
 	if(eoiUse == 1){
 		do {
-			eoiFound = gpib_receive(&readCharacter);
-			if(eoiFound==0xff){return 1;}
-			if((readCharacter != eos) || (eoiFound)){ // Check for EOM char
-			    readBuf[i] = readCharacter; //Copy the read char into the buffer
-			    i++;
+			eoiStatus = gpib_receive(&readCharacter); // eoiStatus is line lvl
+			if(eoiStatus==0xff){return 1;}
+			if (eos_code != 0) {
+			    if((readCharacter != eos_string[0]) || (eoiStatus)){ // Check for EOM char
+			        readBuf[i] = readCharacter; //Copy the read char into the buffer
+			        i++;
+			    }
+			}
+			else {
+			    if((readCharacter == eos_string[1]) && (eoiStatus == 0)) {
+			        if (readBuf[i-1] == eos_string[0]) {
+			            i--;
+			        }
+			        /*else {
+			            readBuf[i] = readCharacter;
+			            i++;
+			        }*/
+			    }
+			    else {
+			        readBuf[i] = readCharacter;
+			        i++;
+			    }
 			}
 			if(i == 100){
 				for(j=0;j<100;++j){
@@ -414,7 +432,7 @@ char gpib_read(void) {
 				#endif
 			}
 
-		} while (eoiFound);
+		} while (eoiStatus);
 
 		for(j=0;j<i-strip;++j){
 			putc(*bufPnt);
@@ -422,11 +440,28 @@ char gpib_read(void) {
 		}
 	} else {
 		do {
-			eoiFound = gpib_receive(&readCharacter);
-			if(eoiFound==0xff){return 1;}
-			if(readCharacter != eos){ // Check for EOM char
-			    readBuf[i] = readCharacter; //Copy the read char into the buffer
-			    i++;
+			eoiStatus = gpib_receive(&readCharacter);
+			if(eoiStatus==0xff){return 1;}
+			if (eos_code != 0) {
+			    if(readCharacter != eos_string[0]){ // Check for EOM char
+			        readBuf[i] = readCharacter; //Copy the read char into the buffer
+			        i++;
+			    }
+			    else {
+			        reading_done = true;
+			    }
+			}
+			else {
+			    if(readCharacter == eos_string[1]) {
+			        if (readBuf[i-1] == eos_string[0]) {
+			            i--;
+			            reading_done = true;
+			        }
+			    }
+			    else {
+			        readBuf[i] = readCharacter;
+			        i++;
+			    }
 			}
 			if(i == 100){
 				for(j=0;j<100;++j){
@@ -440,7 +475,8 @@ char gpib_read(void) {
 				#endif
 			}
 
-		} while (readCharacter != eos);
+		} while (reading_done == false);
+		reading_done = false;
 
 		for(j=0;j<i-strip;++j){
 			putc(*bufPnt);
@@ -611,6 +647,7 @@ void main(void) {
 					eos = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 					eos_string[0] = eos;
 					eos_string[1] = 0x00;
+					eos_code = 4;
 				}
 				// ++eos {0|1|2|3}
 				else if(strncmp((char*)buf_pnt+1,(char*)eosBuf,4)==0) { 
