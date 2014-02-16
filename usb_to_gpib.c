@@ -530,6 +530,7 @@ void main(void) {
 	char autoBuf[7] = "++auto";
 	char clrBuf[6] = "++clr";
 	char eotEnableBuf[13] = "++eot_enable";
+	char ifcBuf[6] = "++ifc";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -762,9 +763,16 @@ void main(void) {
 				        }
 				    }
 				}
+				// ++ifc
+				else if(strncmp((char*)buf_pnt,(char*)ifcBuf,5)==0) {
+				    output_low(IFC); // Assert interface clear.
+	                delay_us(150);
+	                output_float(IFC); // Finishing clearing interface
+				}
 				else{
 				    if (debug == 1) {printf("Unrecognized command.\n\r");}
 				}
+				
 				
 			} 
 			else { // Not an internal command, send to bus
