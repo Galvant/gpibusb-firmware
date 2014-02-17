@@ -56,6 +56,7 @@ byte strip = 0;
 char autoread = 1;
 char eot_enable = 1;
 char eot_char = 13; // default CR
+char listen_only = 0;
 
 #define INTS_PER_SECOND 110
 byte int_count, timeoutPeriod, timeout;
@@ -551,6 +552,7 @@ void main(void) {
 	char ifcBuf[6] = "++ifc";
 	char lloBuf[6] = "++llo";
 	char locBuf[6] = "++loc";
+	char lonBuf[6] = "++lon";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -806,6 +808,18 @@ void main(void) {
 				    writeError = writeError || addressTarget();
 				    cmd_buf[0] = CMD_GTL;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
+				}
+				// ++lon {0|1}
+				else if(strncmp((char*)buf_pnt,(char*)lonBuf,5)==0) {
+				    if (*(buf_pnt+5) == 0x00) {
+				        printf("%i\r", listen_only);
+				    }
+				    else if (*(buf_pnt+5) == 32) {
+				        listen_only = atoi((char*)(buf_pnt+6));
+				        if ((listen_only != 0) && (listen_only != 1)) {
+				            listen_only = 0; // If non-bool sent, set to disable
+				        }
+				    }
 				}
 				else{
 				    if (debug == 1) {printf("Unrecognized command.\n\r");}
