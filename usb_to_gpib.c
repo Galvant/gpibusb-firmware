@@ -744,7 +744,7 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) {
 				    // This command is special in that we must
 				    // address a specific instrument.
-				    cmd_buf[0] = CMD_UNL;
+				    cmd_buf[0] = CMD_UNL; // Everyone stop listening
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				    cmd_buf[0] = partnerAddress + 0x20;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
