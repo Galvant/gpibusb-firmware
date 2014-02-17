@@ -549,6 +549,7 @@ void main(void) {
 	char eotEnableBuf[13] = "++eot_enable";
 	char eotCharBuf[11] = "++eot_char";
 	char ifcBuf[6] = "++ifc";
+	char lloBuf[6] = "++llo";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -792,6 +793,12 @@ void main(void) {
 				    output_low(IFC); // Assert interface clear.
 	                delay_us(150);
 	                output_float(IFC); // Finishing clearing interface
+				}
+				// ++llo
+				else if(strncmp((char*)buf_pnt,(char*)lloBuf,5)==0) {
+				    writeError = writeError || addressTarget();
+				    cmd_buf[0] = CMD_LLO;
+				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				else{
 				    if (debug == 1) {printf("Unrecognized command.\n\r");}
