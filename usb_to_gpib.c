@@ -350,7 +350,7 @@ char gpib_receive(char *byt) {
 	return eoiStatus;
 }
 
-char gpib_read(void) {
+char gpib_read(boolean read_until_eoi) {
 	char readCharacter,eoiStatus;
 	char readBuf[100];
 	char i = 0, j=0;
@@ -399,7 +399,7 @@ char gpib_read(void) {
 	#ifdef VERBOSE_DEBUG
 	printf("gpib_read loop start\n\r");
 	#endif
-	if(eoiUse == 1){
+	if(read_until_eoi == 1){
 		do {
 			eoiStatus = gpib_receive(&readCharacter); // eoiStatus is line lvl
 			if(eoiStatus==0xff){return 1;}
@@ -655,11 +655,29 @@ void main(void) {
 				}
 				// +read
 				else if(strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) { 
-					if(gpib_read()){
+					if(gpib_read(eoiUse)){
 					    if (debug == 1) {printf("Read error occured.\n\r");}
 					    delay_ms(1);
 						reset_cpu();
 					}
+				}
+				// ++read
+				else if(strncmp((char*)buf_pnt+1,(char*)readCmdBuf,5)==0) {
+				    if (*(buf_pnt+6) == 0x00) {
+				        gpib_read(false); // read until EOS condition
+			        }
+			        else if (*(buf_pnt+7) == 101) {
+			            gpib_read(true); // read until EOI flagged
+			        }
+			        /*else if (*(buf_pnt+6) == 32) {
+			            // read until specified character
+			        }*/
+			        
+					/*if(gpib_read()){
+					    if (debug == 1) {printf("Read error occured.\n\r");}
+					    delay_ms(1);
+						reset_cpu();
+					}*/
 				}
 				// +test
 				else if(strncmp((char*)buf_pnt,(char*)testBuf,5)==0) { 
@@ -870,7 +888,7 @@ void main(void) {
 				// If cmd contains a question mark -> is a query
 				if(autoread){
 				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
-					    if(gpib_read()){
+					    if(gpib_read(eoiUse)){
 					        if (debug == 1){printf("Read error occured.\n\r");}
 					        delay_ms(1);
 						    reset_cpu();
