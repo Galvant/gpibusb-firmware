@@ -781,7 +781,7 @@ void main(void) {
 				// ++eot_char N
 				else if(strncmp((char*)buf_pnt,(char*)eotCharBuf,10)==0) {
 				    if (*(buf_pnt+10) == 0x00) {
-				        printf("%c\r", eot_char);
+				        printf("%i\r", eot_char);
 				    }
 				    else if (*(buf_pnt+10) == 32) {
 				        eot_char = atoi((char*)(buf_pnt+11));
