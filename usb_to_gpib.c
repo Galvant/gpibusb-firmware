@@ -55,6 +55,7 @@ char debug = 0; // enable or disable read&write error messages
 byte strip = 0;
 char autoread = 1;
 char eot_enable = 1;
+char eot_char = 13; // default CR
 
 #define INTS_PER_SECOND 110
 byte int_count, timeoutPeriod, timeout;
@@ -486,7 +487,8 @@ char gpib_read(void) {
 	}
 	
 	if (eot_enable == 1) {
-		printf("\r"); // Include a CR to signal end of serial transmission
+		//printf("\r"); // Include a CR to signal end of serial transmission
+		printf("%c", eot_char);
 	}
 	
 	#ifdef VERBOSE_DEBUG
@@ -530,6 +532,7 @@ void main(void) {
 	char autoBuf[7] = "++auto";
 	char clrBuf[6] = "++clr";
 	char eotEnableBuf[13] = "++eot_enable";
+	char eotCharBuf[11] = "++eot_char";
 	char ifcBuf[6] = "++ifc";
 	
 	output_high(LED_ERROR); // Turn on the error LED
@@ -761,6 +764,15 @@ void main(void) {
 				        if ((eot_enable != 0) && (eot_enable != 1)) {
 				            eot_enable = 1; // If non-bool sent, set to enable
 				        }
+				    }
+				}
+				// ++eot_char N
+				else if(strncmp((char*)buf_pnt,(char*)eotCharBuf,10)==0) {
+				    if (*(buf_pnt+10) == 0x00) {
+				        printf("%c\r", eot_char);
+				    }
+				    else if (*(buf_pnt+10) == 32) {
+				        eot_char = atoi((char*)(buf_pnt+11));
 				    }
 				}
 				// ++ifc
