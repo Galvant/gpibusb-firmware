@@ -57,6 +57,7 @@ char autoread = 1;
 char eot_enable = 1;
 char eot_char = 13; // default CR
 char listen_only = 0;
+char mode = 1;
 
 #define INTS_PER_SECOND 110
 byte int_count, timeoutPeriod, timeout;
@@ -553,6 +554,7 @@ void main(void) {
 	char lloBuf[6] = "++llo";
 	char locBuf[6] = "++loc";
 	char lonBuf[6] = "++lon";
+	char modeBuf[7] = "++mode";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -818,6 +820,18 @@ void main(void) {
 				        listen_only = atoi((char*)(buf_pnt+6));
 				        if ((listen_only != 0) && (listen_only != 1)) {
 				            listen_only = 0; // If non-bool sent, set to disable
+				        }
+				    }
+				}
+				// ++mode {0|1}
+				else if(strncmp((char*)buf_pnt,(char*)modeBuf,6)==0) {
+				    if (*(buf_pnt+6) == 0x00) {
+				        printf("%i\r", mode);
+				    }
+				    else if (*(buf_pnt+6) == 32) {
+				        mode = atoi((char*)(buf_pnt+7));
+				        if ((mode != 0) && (mode != 1)) {
+				            mode = 1; // If non-bool sent, set to control mode
 				        }
 				    }
 				}
