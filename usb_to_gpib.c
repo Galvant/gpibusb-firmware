@@ -509,6 +509,21 @@ char gpib_read(void) {
 	return errorFound;
 }
 
+char addressTarget(void) {
+    /*
+    * Address the currently specified GPIB address (as set by the ++addr cmd)
+    * to listen
+    */
+    char writeError = 0;
+    cmd_buf[0] = CMD_UNT;
+	writeError = writeError || gpib_cmd(cmd_buf, 1);
+    cmd_buf[0] = CMD_UNL; // Everyone stop listening
+    writeError = writeError || gpib_cmd(cmd_buf, 1);
+    cmd_buf[0] = partnerAddress + 0x20;
+    writeError = writeError || gpib_cmd(cmd_buf, 1);
+    return writeError;
+}
+
 void main(void) {
 	char writeError = 0;
 	char *buf_pnt = &buf[0];
@@ -747,10 +762,7 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) {
 				    // This command is special in that we must
 				    // address a specific instrument.
-				    cmd_buf[0] = CMD_UNL; // Everyone stop listening
-				    writeError = writeError || gpib_cmd(cmd_buf, 1);
-				    cmd_buf[0] = partnerAddress + 0x20;
-				    writeError = writeError || gpib_cmd(cmd_buf, 1);
+				    writeError = writeError || addressTarget();
 				    cmd_buf[0] = CMD_SDC;
 					writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
@@ -789,14 +801,8 @@ void main(void) {
 			} 
 			else { // Not an internal command, send to bus
 				// Command all talkers and listeners to stop
-				cmd_buf[0] = CMD_UNT;
-				writeError = writeError || gpib_cmd(cmd_buf, 1);
-				cmd_buf[0] = CMD_UNL;
-				writeError = writeError || gpib_cmd(cmd_buf, 1);
-				
-				// Set target device into listen mode
-				cmd_buf[0] = partnerAddress + 0x20;
-				writeError = writeError || gpib_cmd(cmd_buf, 1);
+				// and tell target to listen.
+				writeError = writeError || addressTarget();
 				
 				// Set the controller into talker mode
 				cmd_buf[0] = myAddress + 0x40;
