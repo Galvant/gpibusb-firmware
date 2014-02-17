@@ -550,6 +550,7 @@ void main(void) {
 	char eotCharBuf[11] = "++eot_char";
 	char ifcBuf[6] = "++ifc";
 	char lloBuf[6] = "++llo";
+	char locBuf[6] = "++loc";
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
@@ -798,6 +799,12 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)lloBuf,5)==0) {
 				    writeError = writeError || addressTarget();
 				    cmd_buf[0] = CMD_LLO;
+				    writeError = writeError || gpib_cmd(cmd_buf, 1);
+				}
+				// ++loc
+				else if(strncmp((char*)buf_pnt,(char*)locBuf,5)==0) {
+				    writeError = writeError || addressTarget();
+				    cmd_buf[0] = CMD_GTL;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				else{
