@@ -555,6 +555,16 @@ void main(void) {
 	char locBuf[6] = "++loc";
 	char lonBuf[6] = "++lon";
 	char modeBuf[7] = "++mode";
+	char readTimeoutBuf[14] = "++read_tmo_ms"; //TODO: Implement here down
+	char rstBuf[6] = "++rst";
+	char savecfgBuf[10] = "++savecfg";
+	char spollBuf[8] = "++spoll";
+	char srqBuf[6] = "++srq";
+	char statusBuf[9] = "++status"; // Device mode status byte
+	char trgBuf[6] = "++trg";
+	char verBuf[6] = "++ver";
+	char helpBuf[7] = "++help";
+	
 	
 	output_high(LED_ERROR); // Turn on the error LED
 	
