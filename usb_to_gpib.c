@@ -761,6 +761,10 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)versionBuf,4)==0) { 
 					printf("%i\r", version);
 				}
+				// ++ver
+				else if(strncmp((char*)buf_pnt+1,(char*)versionBuf,4)==0) { 
+					printf("%i\r", version);
+				}
 				// +get
 				else if(strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) { 
 					// Send a Group Execute Trigger (GET) bus command
@@ -785,6 +789,11 @@ void main(void) {
 				}
 				// +reset
 				else if(strncmp((char*)buf_pnt,(char*)resetBuf,6)==0) {
+				    delay_ms(1); 
+					reset_cpu();
+				}
+				// ++rst
+				else if(strncmp((char*)buf_pnt,(char*)resetBuf,5)==0) {
 				    delay_ms(1); 
 					reset_cpu();
 				}
