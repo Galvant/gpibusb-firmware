@@ -793,7 +793,7 @@ void main(void) {
 					reset_cpu();
 				}
 				// ++rst
-				else if(strncmp((char*)buf_pnt,(char*)resetBuf,5)==0) {
+				else if(strncmp((char*)buf_pnt,(char*)rstBuf,5)==0) {
 				    delay_ms(1); 
 					reset_cpu();
 				}
