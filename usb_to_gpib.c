@@ -565,7 +565,7 @@ void main(void) {
 	char spollBuf[8] = "++spoll"; //TODO
 	char srqBuf[6] = "++srq";
 	char statusBuf[9] = "++status"; // //TODO Device mode status byte
-	char trgBuf[6] = "++trg"; //TODO
+	char trgBuf[6] = "++trg";
 	char verBuf[6] = "++ver";
 	char helpBuf[7] = "++help"; //TODO
 	
