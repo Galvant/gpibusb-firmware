@@ -511,7 +511,7 @@ char gpib_read(boolean read_until_eoi) {
 	return errorFound;
 }
 
-char addressTarget(void) {
+char addressTarget(int address) {
     /*
     * Address the currently specified GPIB address (as set by the ++addr cmd)
     * to listen
@@ -521,7 +521,7 @@ char addressTarget(void) {
 	writeError = writeError || gpib_cmd(cmd_buf, 1);
     cmd_buf[0] = CMD_UNL; // Everyone stop listening
     writeError = writeError || gpib_cmd(cmd_buf, 1);
-    cmd_buf[0] = partnerAddress + 0x20;
+    cmd_buf[0] = address + 0x20;
     writeError = writeError || gpib_cmd(cmd_buf, 1);
     return writeError;
 }
@@ -557,7 +557,7 @@ void main(void) {
 	char ifcBuf[6] = "++ifc";
 	char lloBuf[6] = "++llo";
 	char locBuf[6] = "++loc";
-	char lonBuf[6] = "++lon";
+	char lonBuf[6] = "++lon"; //TODO: Listen mode
 	char modeBuf[7] = "++mode"; //TODO: Device mode
 	char readTimeoutBuf[14] = "++read_tmo_ms"; //TODO
 	char rstBuf[6] = "++rst";
@@ -775,6 +775,17 @@ void main(void) {
 					cmd_buf[0] = CMD_GET;
 					gpib_cmd(cmd_buf, 1);
 				}
+				// ++trg
+				else if(strncmp((char*)buf_pnt,(char*)trgBuf,5)==0) {
+				    if (*(buf_pnt+5) == 0x00) {
+				        writeError = writeError || addressTarget(partnerAddress);
+				        cmd_buf[0] = CMD_GET;
+					    gpib_cmd(cmd_buf, 1);
+				    }
+				    /*else if (*(buf_pnt+5) == 32) {
+				        TODO: Add support for specified addresses
+				    }*/
+				}
 				// +autoread:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)autoReadBuf,10)==0) { 
 					autoread = atoi((char*)(buf_pnt+10));
@@ -809,7 +820,7 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) {
 				    // This command is special in that we must
 				    // address a specific instrument.
-				    writeError = writeError || addressTarget();
+				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_SDC;
 					writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
@@ -842,13 +853,13 @@ void main(void) {
 				}
 				// ++llo
 				else if(strncmp((char*)buf_pnt,(char*)lloBuf,5)==0) {
-				    writeError = writeError || addressTarget();
+				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_LLO;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				// ++loc
 				else if(strncmp((char*)buf_pnt,(char*)locBuf,5)==0) {
-				    writeError = writeError || addressTarget();
+				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_GTL;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
@@ -889,7 +900,7 @@ void main(void) {
 			else { // Not an internal command, send to bus
 				// Command all talkers and listeners to stop
 				// and tell target to listen.
-				writeError = writeError || addressTarget();
+				writeError = writeError || addressTarget(partnerAddress);
 				
 				// Set the controller into talker mode
 				cmd_buf[0] = myAddress + 0x40;
