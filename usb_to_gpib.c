@@ -526,6 +526,10 @@ char addressTarget(void) {
     return writeError;
 }
 
+boolean srq_state(void) {
+    return !((boolean)input(SRQ));
+}
+
 void main(void) {
 	char writeError = 0;
 	char *buf_pnt = &buf[0];
@@ -554,16 +558,16 @@ void main(void) {
 	char lloBuf[6] = "++llo";
 	char locBuf[6] = "++loc";
 	char lonBuf[6] = "++lon";
-	char modeBuf[7] = "++mode";
-	char readTimeoutBuf[14] = "++read_tmo_ms"; //TODO: Implement here down
+	char modeBuf[7] = "++mode"; //TODO: Device mode
+	char readTimeoutBuf[14] = "++read_tmo_ms"; //TODO
 	char rstBuf[6] = "++rst";
-	char savecfgBuf[10] = "++savecfg";
-	char spollBuf[8] = "++spoll";
+	char savecfgBuf[10] = "++savecfg"; //TODO
+	char spollBuf[8] = "++spoll"; //TODO
 	char srqBuf[6] = "++srq";
-	char statusBuf[9] = "++status"; // Device mode status byte
-	char trgBuf[6] = "++trg";
+	char statusBuf[9] = "++status"; // //TODO Device mode status byte
+	char trgBuf[6] = "++trg"; //TODO
 	char verBuf[6] = "++ver";
-	char helpBuf[7] = "++help";
+	char helpBuf[7] = "++help"; //TODO
 	
 	
 	output_high(LED_ERROR); // Turn on the error LED
@@ -871,6 +875,10 @@ void main(void) {
 				            mode = 1; // If non-bool sent, set to control mode
 				        }
 				    }
+				}
+				// ++srq
+				else if(strncmp((char*)buf_pnt,(char*)srqBuf,5)==0) {
+				    printf("%i\r", srq_state());
 				}
 				else{
 				    if (debug == 1) {printf("Unrecognized command.\n\r");}
