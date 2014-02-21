@@ -78,8 +78,16 @@ void clock_isr() {
 #int_rda
 RDA_isr()
 {
-	gets(&(buf[buf_in]));
-	buf_in += (strlen(&(buf[buf_in])) + 1);
+    char c;
+
+    do {
+        c=getc();
+        if ((c>=32)&&(c<=126)) { // if human readable ascii char
+            buf[buf_in++] = c;
+        }
+    } while((c!=10)&&(c!=13)); //both LF and CR are now valid termination chars
+    buf[buf_in++] = 0x00;
+    
 	if (buf_in >= buf_size)
 	    buf_in = 0;
 }
