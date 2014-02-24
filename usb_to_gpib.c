@@ -204,7 +204,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
-				    printf("Timeout: Waiting for NDAC to go low while writing\n");
+				    printf("Timeout: Waiting for NDAC to go low while writing");
 				}
 				return 1;
 			}
@@ -227,7 +227,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
-				    printf("Timeout: Waiting for NRFD to go high while writing\n");
+				    printf("Timeout: Waiting for NRFD to go high while writing");
 			    }
 				return 1;
 			}
@@ -251,7 +251,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
-			        printf("Timeout: Waiting for NDAC to go high while writing\n");
+			        printf("Timeout: Waiting for NDAC to go high while writing");
 			    }
 				return 1;
 			}
@@ -312,7 +312,7 @@ char gpib_receive(char *byt) {
 	    restart_wdt();
 		if(seconds >= timeout) {
 		    if (debug == 1) {
-			    printf("Timeout: Waiting for DAV to go low while reading\n");
+			    printf("Timeout: Waiting for DAV to go low while reading");
 		    }
 			return 0xff;
 		}
@@ -339,7 +339,7 @@ char gpib_receive(char *byt) {
 	    restart_wdt();
 		if(seconds >= timeout) {
 		    if (debug == 1){
-			    printf("Timeout: Waiting for DAV to go high while reading\n");
+			    printf("Timeout: Waiting for DAV to go high while reading");
 		    }
 			return 0xff;
 		}
