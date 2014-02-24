@@ -669,7 +669,7 @@ void main(void) {
 				// ++addr N
 				else if(strncmp((char*)buf_pnt,(char*)addrBuf,6)==0) {
 				    if (*(buf_pnt+6) == 0x00) {
-				        printf("%i\r", partnerAddress);
+				        printf("%i%c", partnerAddress, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
 				        partnerAddress = atoi((char*)(buf_pnt+7));
@@ -678,7 +678,7 @@ void main(void) {
 				// +read
 				else if(strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read(eoiUse)){
-					    if (debug == 1) {printf("Read error occured.\n\r");}
+					    if (debug == 1) {printf("Read error occured.%c", eot_char);}
 					    delay_ms(1);
 						reset_cpu();
 					}
@@ -703,7 +703,7 @@ void main(void) {
 				}
 				// +test
 				else if(strncmp((char*)buf_pnt,(char*)testBuf,5)==0) { 
-					printf("testing\n\r");
+					printf("testing%c", eot_char);
 				}
 				// +t:N
 				else if(strncmp((char*)buf_pnt,(char*)timeoutBuf,3)==0) { 
@@ -719,7 +719,7 @@ void main(void) {
 				// ++eos {0|1|2|3}
 				else if(strncmp((char*)buf_pnt+1,(char*)eosBuf,4)==0) { 
 					if (*(buf_pnt+5) == 0x00) {
-				        printf("%i\r", eos_code);
+				        printf("%i%c", eos_code, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
 				        eos_code = atoi((char*)(buf_pnt+6));
@@ -759,7 +759,7 @@ void main(void) {
 				// TODO: make this command used only for writing and not reading
 				else if(strncmp((char*)buf_pnt+1,(char*)eoiBuf,4)==0) { 
 					if (*(buf_pnt+5) == 0x00) {
-				        printf("%i\r", eoiUse);
+				        printf("%i%c", eoiUse, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
 				        eoiUse = atoi((char*)(buf_pnt+6));
@@ -771,11 +771,11 @@ void main(void) {
 				}
 				// +ver
 				else if(strncmp((char*)buf_pnt,(char*)versionBuf,4)==0) { 
-					printf("%i\r", version);
+					printf("%i%c", version, eot_char);
 				}
 				// ++ver
 				else if(strncmp((char*)buf_pnt+1,(char*)versionBuf,4)==0) { 
-					printf("%i\r", version);
+					printf("%i%c", version, eot_char);
 				}
 				// +get
 				else if(strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) { 
@@ -801,7 +801,7 @@ void main(void) {
 				// ++auto {0|1}
 				else if(strncmp((char*)buf_pnt,(char*)autoBuf,6)==0) {
 				    if (*(buf_pnt+6) == 0x00) {
-				        printf("%i\r", autoRead);
+				        printf("%i%c", autoRead, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
 				        autoread = atoi((char*)(buf_pnt+7));
@@ -835,7 +835,7 @@ void main(void) {
 				// ++eot_enable {0|1}
 				else if(strncmp((char*)buf_pnt,(char*)eotEnableBuf,12)==0) {
 				    if (*(buf_pnt+12) == 0x00) {
-				        printf("%i\r", eot_enable);
+				        printf("%i%c", eot_enable, eot_char);
 				    }
 				    else if (*(buf_pnt+12) == 32) {
 				        eot_enable = atoi((char*)(buf_pnt+13));
@@ -847,7 +847,7 @@ void main(void) {
 				// ++eot_char N
 				else if(strncmp((char*)buf_pnt,(char*)eotCharBuf,10)==0) {
 				    if (*(buf_pnt+10) == 0x00) {
-				        printf("%i\r", eot_char);
+				        printf("%i%c", eot_char, eot_char);
 				    }
 				    else if (*(buf_pnt+10) == 32) {
 				        eot_char = atoi((char*)(buf_pnt+11));
@@ -874,7 +874,7 @@ void main(void) {
 				// ++lon {0|1}
 				else if(strncmp((char*)buf_pnt,(char*)lonBuf,5)==0) {
 				    if (*(buf_pnt+5) == 0x00) {
-				        printf("%i\r", listen_only);
+				        printf("%i%c", listen_only, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
 				        listen_only = atoi((char*)(buf_pnt+6));
@@ -886,7 +886,7 @@ void main(void) {
 				// ++mode {0|1}
 				else if(strncmp((char*)buf_pnt,(char*)modeBuf,6)==0) {
 				    if (*(buf_pnt+6) == 0x00) {
-				        printf("%i\r", mode);
+				        printf("%i%c", mode, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
 				        mode = atoi((char*)(buf_pnt+7));
@@ -897,10 +897,10 @@ void main(void) {
 				}
 				// ++srq
 				else if(strncmp((char*)buf_pnt,(char*)srqBuf,5)==0) {
-				    printf("%i\r", srq_state());
+				    printf("%i%c", srq_state(), eot_char);
 				}
 				else{
-				    if (debug == 1) {printf("Unrecognized command.\n\r");}
+				    if (debug == 1) {printf("Unrecognized command.%c", eot_char);}
 				}
 				
 				
@@ -916,7 +916,7 @@ void main(void) {
 				
 				// Send out command to the bus
 				#ifdef VERBOSE_DEBUG
-				printf("gpib_write: %s\n\r",buf_pnt);
+				printf("gpib_write: %s%c",buf_pnt, eot_char);
 				#endif
 				
 				if(eos_code != 3) { // If have an EOS char, need to output 
@@ -935,14 +935,18 @@ void main(void) {
 				if(autoread){
 				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
 					    if(gpib_read(eoiUse)){
-					        if (debug == 1){printf("Read error occured.\n\r");}
+					        if (debug == 1){
+					            printf("Read error occured.%c", eot_char);
+				            }
 					        delay_ms(1);
 						    reset_cpu();
 					    }
 				    }
 				    else if(writeError){
 					    writeError = 0;
-					    if (debug == 1){printf("Write error occured.\n\r");}
+					    if (debug == 1){
+					        printf("Write error occured.%c", eot_char);
+				        }
 					    delay_ms(1);
 					    reset_cpu();
 				    }
