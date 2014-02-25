@@ -203,7 +203,6 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		
 		output_float(NDAC);
 		
-		
 		// Wait for NDAC to go low, indicating previous bit is now done with
 #ifdef WITH_TIMEOUT
 		seconds = 0;
@@ -562,6 +561,23 @@ int fast_atoi(char *str) {
         val = val*10 + (*str++ - '0');
     }
     return val;
+}
+
+void serial_poll(int address) {
+    char error = 0;
+    char status_byte;
+    cmd_buf[0] = CMD_SPE; // enable serial poll
+	error = error || gpib_cmd(cmd_buf, 1);
+	cmd_buf[0] = address + 0x40;
+    error = error || gpib_cmd(cmd_buf, 1);
+    if (error) return;
+    error = gpib_receive(&status_byte);
+    if (error == 1) error = 0; // gpib_receive returns EOI lvl and 0xFF on errors
+    if (error == 0xFF) error = 1;
+    cmd_buf[0] = CMD_SPD; // disable serial poll
+	gpib_cmd(cmd_buf, 1);
+	if (!error)
+	    printf("%c%c", status_byte, eot_char);
 }
 
 void main(void) {
@@ -944,6 +960,15 @@ void main(void) {
 				// ++srq
 				else if(strncmp((char*)buf_pnt,(char*)srqBuf,5)==0) {
 				    printf("%i%c", srq_state(), eot_char);
+				}
+				// ++spoll N
+				else if(strncmp((char*)buf_pnt,(char*)spollBuf,7)==0) {
+				    if (*(buf_pnt+7) == 0x00) {
+				        serial_poll(partnerAddress);
+				    }
+				    else if (*(buf_pnt+7) == 32) {
+				        serial_poll(atoi((char*)(buf_pnt+8)));
+				    }
 				}
 				else{
 				    if (debug == 1) {printf("Unrecognized command.%c", eot_char);}

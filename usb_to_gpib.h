@@ -43,6 +43,8 @@
 #define CMD_SDC 0x04
 #define CMD_LLO 0x11
 #define CMD_GTL 0x1
+#define CMD_SPE 0x18
+#define CMD_SPD 0x19
 
 extern char gpib_cmd( char *bytes, int length );
 extern char _gpib_write( char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI);
