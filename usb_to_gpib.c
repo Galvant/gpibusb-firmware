@@ -37,8 +37,8 @@
 
 const unsigned int version = 5;
 
-const unsigned int buf_size = 255;
-char cmd_buf[10], buf[buf_size];
+const unsigned int buf_size = 235;
+char cmd_buf[10], buf[buf_size+20];
 unsigned int buf_out = 0;
 unsigned int buf_in = 0;
 
