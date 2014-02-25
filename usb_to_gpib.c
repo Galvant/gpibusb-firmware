@@ -59,9 +59,8 @@ char eot_char = 13; // default CR
 char listen_only = 0;
 char mode = 1;
 
-#define INTS_PER_SECOND 110
-byte int_count, timeoutPeriod, timeout;
-unsigned int seconds = 0;
+unsigned int32 timeout = 1000;
+unsigned int32 seconds = 0;
 
 #define WITH_TIMEOUT
 #define WITH_WDT
@@ -69,10 +68,7 @@ unsigned int seconds = 0;
 
 #int_timer2
 void clock_isr() {
-	if(--int_count==0) {
-		++seconds;
-		int_count=INTS_PER_SECOND;
-	}
+	++seconds;
 }
 
 #int_rda
@@ -203,7 +199,6 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		// Wait for NDAC to go low, indicating previous bit is now done with
 #ifdef WITH_TIMEOUT
 		seconds = 0;
-		timeout = seconds + timeoutPeriod;
 		while(input(NDAC) && (seconds <= timeout)) {
 		    restart_wdt();
 			if(seconds >= timeout) {
@@ -226,7 +221,6 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		// Wait for listeners to be ready for data (NRFD should be high)
 #ifdef WITH_TIMEOUT
 		seconds = 0;
-		timeout = seconds + timeoutPeriod;
 		while(!(input(NRFD)) && (seconds <= timeout)) {
 		    restart_wdt();
 			if(seconds >= timeout) {
@@ -250,7 +244,6 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		// Wait for NDAC to go high, all listeners have accepted the byte
 #ifdef WITH_TIMEOUT
 		seconds = 0;
-		timeout = seconds + timeoutPeriod;
 		while(!(input(NDAC)) && (seconds <= timeout)) {
 		    restart_wdt();
 			if(seconds >= timeout) {
@@ -311,7 +304,6 @@ char gpib_receive(char *byt) {
 	// Wait for DAV to go low (talker informing us the byte is ready)
 #ifdef WITH_TIMEOUT
     seconds = 0;
-	timeout = seconds + timeoutPeriod;
 	while(input(DAV) && (seconds <= timeout)) {
 	    restart_wdt();
 		if(seconds >= timeout) {
@@ -338,7 +330,6 @@ char gpib_receive(char *byt) {
 	// Wait for DAV to go high (talker knows that we have read the byte)
 #ifdef WITH_TIMEOUT
     seconds = 0;
-	timeout = seconds + timeoutPeriod;
 	while(!(input(DAV)) && (seconds<=timeout) ) {
 	    restart_wdt();
 		if(seconds >= timeout) {
@@ -604,14 +595,12 @@ void main(void) {
 
 #ifdef WITH_TIMEOUT	
 	// Setup the timer
-	int_count=INTS_PER_SECOND;
 	set_rtcc(0);
-	setup_timer_2(T2_DIV_BY_16,250,10);
+	//setup_timer_2(T2_DIV_BY_16,250,10);
+	setup_timer_2(T2_DIV_BY_16,144,2); // 1ms interupt
 	enable_interrupts(INT_TIMER2);
 	enable_interrupts(GLOBAL);
 #endif
-	
-	timeoutPeriod = 5; // Default timeout period, in seconds
 	
 	// Start all the GPIB related stuff
 	gpib_init(); // Initialize the GPIB Bus
@@ -692,6 +681,19 @@ void main(void) {
 				        partnerAddress = atoi((char*)(buf_pnt+7));
 				    }
 				}
+				// +t:N
+				else if(strncmp((char*)buf_pnt,(char*)timeoutBuf,3)==0) { 
+					timeout = atoi32((char*)(buf_pnt+3)); // Parse out the timeout period
+				}
+				// ++read_tmo_ms N
+				else if(strncmp((char*)buf_pnt,(char*)readTimeoutBuf,13)==0) {
+			        if (*(buf_pnt+13) == 0x00) {
+			            printf("%Lu%c", timeout, eot_char);
+		            }
+		            else if (*(buf_pnt+13) == 32) {
+					    timeout = atoi32((char*)(buf_pnt+14));
+				    }
+				}
 				// +read
 				else if(strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read(eoiUse)){
@@ -721,10 +723,6 @@ void main(void) {
 				// +test
 				else if(strncmp((char*)buf_pnt,(char*)testBuf,5)==0) { 
 					printf("testing%c", eot_char);
-				}
-				// +t:N
-				else if(strncmp((char*)buf_pnt,(char*)timeoutBuf,3)==0) { 
-					timeoutPeriod = atoi((char*)(buf_pnt+3)); // Parse out the timeout period
 				}
 				// +eos:N
 				else if(strncmp((char*)buf_pnt,(char*)eosBuf,5)==0) { 
