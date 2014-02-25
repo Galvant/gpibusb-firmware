@@ -58,6 +58,7 @@ char eot_enable = 1;
 char eot_char = 13; // default CR
 char listen_only = 0;
 char mode = 1;
+char save_cfg = 1;
 
 unsigned int32 timeout = 1000;
 unsigned int32 seconds = 0;
@@ -594,7 +595,7 @@ void main(void) {
 	char modeBuf[7] = "++mode"; //TODO: Device mode
 	char readTimeoutBuf[14] = "++read_tmo_ms";
 	char rstBuf[6] = "++rst";
-	char savecfgBuf[10] = "++savecfg"; //TODO
+	char savecfgBuf[10] = "++savecfg"; //TODO: Actually save to eeprom
 	char spollBuf[8] = "++spoll"; //TODO
 	char srqBuf[6] = "++srq";
 	char statusBuf[9] = "++status"; // //TODO Device mode status byte
@@ -925,6 +926,18 @@ void main(void) {
 				        mode = atoi((char*)(buf_pnt+7));
 				        if ((mode != 0) && (mode != 1)) {
 				            mode = 1; // If non-bool sent, set to control mode
+				        }
+				    }
+				}
+				// ++savecfg {0|1}
+				else if(strncmp((char*)buf_pnt,(char*)savecfgBuf,9)==0) {
+				    if (*(buf_pnt+9) == 0x00) {
+				        printf("%i%c", save_cfg, eot_char);
+				    }
+				    else if (*(buf_pnt+9) == 32) {
+				        save_cfg = atoi((char*)(buf_pnt+10));
+				        if ((save_cfg != 0) && (save_cfg != 1)) {
+				            save_cfg = 1; // If non-bool sent, set to enable
 				        }
 				    }
 				}
