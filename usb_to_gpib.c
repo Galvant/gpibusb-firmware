@@ -37,8 +37,8 @@
 
 const unsigned int version = 5;
 
-const unsigned int buf_size = 1023;
-char cmd_buf[10], buf[buf_size+77];
+const unsigned int buf_size = 255;
+char cmd_buf[10], buf[buf_size];
 unsigned int buf_out = 0;
 unsigned int buf_in = 0;
 
@@ -97,6 +97,10 @@ char buf_get(char *pnt) {
     buf_out += (strlen(&(buf[buf_out])) + 1);
     if (buf_out >= buf_size)
         buf_out = 0;
+    if (buf_out == buf_in) {
+        buf_out = 0;
+        buf_in = 0;
+    }
     return pnt;
 }
 
@@ -538,6 +542,14 @@ boolean srq_state(void) {
     return !((boolean)input(SRQ));
 }
 
+int fast_atoi(char *str) {
+    int val = 0;
+    while( *str ) {
+        val = val*10 + (*str++ - '0');
+    }
+    return val;
+}
+
 void main(void) {
 	char writeError = 0;
 	char *buf_pnt = &buf[0];
@@ -664,7 +676,7 @@ void main(void) {
 			if(*buf_pnt == '+') { // Controller commands start with a +
 			    // +a:N
 				if(strncmp((char*)buf_pnt,(char*)addressBuf,3)==0) { 
-					partnerAddress = atoi((char*)(buf_pnt+3)); // Parse out the GPIB address
+					partnerAddress = fast_atoi((char*)(buf_pnt+3)); // Parse out the GPIB address
 				}
 				// ++addr N
 				else if(strncmp((char*)buf_pnt,(char*)addrBuf,6)==0) {
@@ -672,7 +684,7 @@ void main(void) {
 				        printf("%i%c", partnerAddress, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
-				        partnerAddress = atoi((char*)(buf_pnt+7));
+				        partnerAddress = fast_atoi((char*)(buf_pnt+7));
 				    }
 				}
 				// +read
@@ -707,11 +719,11 @@ void main(void) {
 				}
 				// +t:N
 				else if(strncmp((char*)buf_pnt,(char*)timeoutBuf,3)==0) { 
-					timeoutPeriod = atoi((char*)(buf_pnt+3)); // Parse out the timeout period
+					timeoutPeriod = fast_atoi((char*)(buf_pnt+3)); // Parse out the timeout period
 				}
 				// +eos:N
 				else if(strncmp((char*)buf_pnt,(char*)eosBuf,5)==0) { 
-					eos = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
+					eos = fast_atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 					eos_string[0] = eos;
 					eos_string[1] = 0x00;
 					eos_code = 4;
@@ -722,7 +734,7 @@ void main(void) {
 				        printf("%i%c", eos_code, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
-				        eos_code = atoi((char*)(buf_pnt+6));
+				        eos_code = fast_atoi((char*)(buf_pnt+6));
 				        switch (eos_code) {
 				            case 0:
 				                eos_code = 0;
@@ -753,7 +765,7 @@ void main(void) {
 				}
 				// +eoi:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)eoiBuf,5)==0) { 
-					eoiUse = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
+					eoiUse = fast_atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 				}
 				// ++eoi {0|1}
 				// TODO: make this command used only for writing and not reading
@@ -762,12 +774,12 @@ void main(void) {
 				        printf("%i%c", eoiUse, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
-				        eoiUse = atoi((char*)(buf_pnt+6));
+				        eoiUse = fast_atoi((char*)(buf_pnt+6));
 				    }
 				}
 				// +strip:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)stripBuf,7)==0) { 
-					strip = atoi((char*)(buf_pnt+7)); // Parse out the end of string byte
+					strip = fast_atoi((char*)(buf_pnt+7)); // Parse out the end of string byte
 				}
 				// +ver
 				else if(strncmp((char*)buf_pnt,(char*)versionBuf,4)==0) { 
@@ -796,7 +808,7 @@ void main(void) {
 				}
 				// +autoread:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)autoReadBuf,10)==0) { 
-					autoread = atoi((char*)(buf_pnt+10));
+					autoread = fast_atoi((char*)(buf_pnt+10));
 				}
 				// ++auto {0|1}
 				else if(strncmp((char*)buf_pnt,(char*)autoBuf,6)==0) {
@@ -804,7 +816,7 @@ void main(void) {
 				        printf("%i%c", autoRead, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
-				        autoread = atoi((char*)(buf_pnt+7));
+				        autoread = fast_atoi((char*)(buf_pnt+7));
 				        if ((autoread != 0) && (autoread != 1)) {
 				            autoread = 1; // If non-bool sent, set to enable
 				        }
@@ -822,7 +834,7 @@ void main(void) {
 				}
 				// +debug:{0|1}
 				else if(strncmp((char*)buf_pnt,(char*)debugBuf,7)==0) { 
-					debug = atoi((char*)(buf_pnt+7));
+					debug = fast_atoi((char*)(buf_pnt+7));
 				}
 				// ++clr
 				else if(strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) {
@@ -838,7 +850,7 @@ void main(void) {
 				        printf("%i%c", eot_enable, eot_char);
 				    }
 				    else if (*(buf_pnt+12) == 32) {
-				        eot_enable = atoi((char*)(buf_pnt+13));
+				        eot_enable = fast_atoi((char*)(buf_pnt+13));
 				        if ((eot_enable != 0) && (eot_enable != 1)) {
 				            eot_enable = 1; // If non-bool sent, set to enable
 				        }
@@ -850,7 +862,7 @@ void main(void) {
 				        printf("%i%c", eot_char, eot_char);
 				    }
 				    else if (*(buf_pnt+10) == 32) {
-				        eot_char = atoi((char*)(buf_pnt+11));
+				        eot_char = fast_atoi((char*)(buf_pnt+11));
 				    }
 				}
 				// ++ifc
@@ -877,7 +889,7 @@ void main(void) {
 				        printf("%i%c", listen_only, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
-				        listen_only = atoi((char*)(buf_pnt+6));
+				        listen_only = fast_atoi((char*)(buf_pnt+6));
 				        if ((listen_only != 0) && (listen_only != 1)) {
 				            listen_only = 0; // If non-bool sent, set to disable
 				        }
@@ -889,7 +901,7 @@ void main(void) {
 				        printf("%i%c", mode, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
-				        mode = atoi((char*)(buf_pnt+7));
+				        mode = fast_atoi((char*)(buf_pnt+7));
 				        if ((mode != 0) && (mode != 1)) {
 				            mode = 1; // If non-bool sent, set to control mode
 				        }
