@@ -543,6 +543,11 @@ boolean srq_state(void) {
 }
 
 int fast_atoi(char *str) {
+    /*
+    * This code snippet is from StackExchange by user 'paddy'
+    * http://stackoverflow.com/questions/16826422/c-most-efficient-way-to-
+    *   convert-string-to-int-faster-than-atoi
+    */
     int val = 0;
     while( *str ) {
         val = val*10 + (*str++ - '0');
