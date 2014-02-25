@@ -575,7 +575,7 @@ void main(void) {
 	char locBuf[6] = "++loc";
 	char lonBuf[6] = "++lon"; //TODO: Listen mode
 	char modeBuf[7] = "++mode"; //TODO: Device mode
-	char readTimeoutBuf[14] = "++read_tmo_ms"; //TODO
+	char readTimeoutBuf[14] = "++read_tmo_ms";
 	char rstBuf[6] = "++rst";
 	char savecfgBuf[10] = "++savecfg"; //TODO
 	char spollBuf[8] = "++spoll"; //TODO
