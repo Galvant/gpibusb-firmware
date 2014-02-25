@@ -75,14 +75,21 @@ void clock_isr() {
 RDA_isr()
 {
     char c;
+    BOOLEAN add_null = false; 
 
     do {
         c=getc();
         if ((c>=32)&&(c<=126)) { // if human readable ascii char
             buf[buf_in++] = c;
+            add_null = true;
         }
     } while((c!=10)&&(c!=13)); //both LF and CR are now valid termination chars
-    buf[buf_in++] = 0x00;
+    
+    while(kbhit()){
+        buf[buf_in] = getc();
+    }
+    if (add_null)
+        buf[buf_in++] = 0x00;
     
 	if (buf_in >= buf_size)
 	    buf_in = 0;
@@ -209,7 +216,6 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 				return 1;
 			}
 		}
-		printf("seconds: %Lu\r", seconds);
 		disable_interrupts(INT_TIMER2);
 #else
 		while(input(NDAC)){} 
