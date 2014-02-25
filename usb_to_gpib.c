@@ -612,7 +612,7 @@ void main(void) {
 	char readTimeoutBuf[14] = "++read_tmo_ms";
 	char rstBuf[6] = "++rst";
 	char savecfgBuf[10] = "++savecfg"; //TODO: Actually save to eeprom
-	char spollBuf[8] = "++spoll"; //TODO
+	char spollBuf[8] = "++spoll";
 	char srqBuf[6] = "++srq";
 	char statusBuf[9] = "++status"; // //TODO Device mode status byte
 	char trgBuf[6] = "++trg";
