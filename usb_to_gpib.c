@@ -199,6 +199,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		// Wait for NDAC to go low, indicating previous bit is now done with
 #ifdef WITH_TIMEOUT
 		seconds = 0;
+		enable_interrupts(INT_TIMER2);
 		while(input(NDAC) && (seconds <= timeout)) {
 		    restart_wdt();
 			if(seconds >= timeout) {
@@ -208,6 +209,8 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 				return 1;
 			}
 		}
+		printf("seconds: %Lu\r", seconds);
+		disable_interrupts(INT_TIMER2);
 #else
 		while(input(NDAC)){} 
 #endif
@@ -221,6 +224,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		// Wait for listeners to be ready for data (NRFD should be high)
 #ifdef WITH_TIMEOUT
 		seconds = 0;
+		enable_interrupts(INT_TIMER2);
 		while(!(input(NRFD)) && (seconds <= timeout)) {
 		    restart_wdt();
 			if(seconds >= timeout) {
@@ -230,6 +234,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 				return 1;
 			}
 		}
+		disable_interrupts(INT_TIMER2);
 #else		
 		while(!(input(NRFD))){}
 #endif
@@ -244,6 +249,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		// Wait for NDAC to go high, all listeners have accepted the byte
 #ifdef WITH_TIMEOUT
 		seconds = 0;
+		enable_interrupts(INT_TIMER2);
 		while(!(input(NDAC)) && (seconds <= timeout)) {
 		    restart_wdt();
 			if(seconds >= timeout) {
@@ -253,6 +259,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 				return 1;
 			}
 		}
+		disable_interrupts(INT_TIMER2);
 #else
 		while(!(input(NDAC))){} 
 #endif
@@ -304,6 +311,7 @@ char gpib_receive(char *byt) {
 	// Wait for DAV to go low (talker informing us the byte is ready)
 #ifdef WITH_TIMEOUT
     seconds = 0;
+    enable_interrupts(INT_TIMER2);
 	while(input(DAV) && (seconds <= timeout)) {
 	    restart_wdt();
 		if(seconds >= timeout) {
@@ -313,6 +321,7 @@ char gpib_receive(char *byt) {
 			return 0xff;
 		}
 	}
+	disable_interrupts(INT_TIMER2);
 #else
 	while(input(DAV)) {} 
 #endif
@@ -330,6 +339,7 @@ char gpib_receive(char *byt) {
 	// Wait for DAV to go high (talker knows that we have read the byte)
 #ifdef WITH_TIMEOUT
     seconds = 0;
+    enable_interrupts(INT_TIMER2);
 	while(!(input(DAV)) && (seconds<=timeout) ) {
 	    restart_wdt();
 		if(seconds >= timeout) {
@@ -339,6 +349,7 @@ char gpib_receive(char *byt) {
 			return 0xff;
 		}
 	}
+	disable_interrupts(INT_TIMER2);
 #else
 	while(!(input(DAV))) {} 
 #endif
@@ -598,8 +609,9 @@ void main(void) {
 	set_rtcc(0);
 	//setup_timer_2(T2_DIV_BY_16,250,10);
 	setup_timer_2(T2_DIV_BY_16,144,2); // 1ms interupt
-	enable_interrupts(INT_TIMER2);
+	//enable_interrupts(INT_TIMER2);
 	enable_interrupts(GLOBAL);
+	disable_interrupts(INT_TIMER2);
 #endif
 	
 	// Start all the GPIB related stuff
