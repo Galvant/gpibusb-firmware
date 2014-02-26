@@ -733,8 +733,8 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) { 
 					if(gpib_read(eoiUse)){
 					    if (debug == 1) {printf("Read error occured.%c", eot_char);}
-					    delay_ms(1);
-						reset_cpu();
+					    //delay_ms(1);
+						//reset_cpu();
 					}
 				}
 				// ++read
@@ -1009,8 +1009,8 @@ void main(void) {
 					        if (debug == 1){
 					            printf("Read error occured.%c", eot_char);
 				            }
-					        delay_ms(1);
-						    reset_cpu();
+					        //delay_ms(1);
+						    //reset_cpu();
 					    }
 				    }
 				    else if(writeError){
@@ -1018,8 +1018,8 @@ void main(void) {
 					    if (debug == 1){
 					        printf("Write error occured.%c", eot_char);
 				        }
-					    delay_ms(1);
-					    reset_cpu();
+					    //delay_ms(1);
+					    //reset_cpu();
 				    }
 				}
 				
