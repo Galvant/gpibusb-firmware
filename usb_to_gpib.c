@@ -63,6 +63,11 @@ char save_cfg = 1;
 unsigned int32 timeout = 1000;
 unsigned int32 seconds = 0;
 
+// Variables for device mode
+boolean device_talk = false;
+boolean device_listen = false;
+boolean device_srq = false;
+
 #define WITH_TIMEOUT
 #define WITH_WDT
 //#define VERBOSE_DEBUG
@@ -384,22 +389,24 @@ char gpib_read(boolean read_until_eoi) {
 	printf("gpib_read start\n\r");
 	#endif
 	
-	// Command all talkers and listeners to stop
-	cmd_buf[0] = CMD_UNT;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
-	cmd_buf[0] = CMD_UNL;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
-	if(errorFound){return 1;}
+	if (mode) {
+	    // Command all talkers and listeners to stop
+	    cmd_buf[0] = CMD_UNT;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	    cmd_buf[0] = CMD_UNL;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	    if(errorFound){return 1;}
 	
-	// Set the controller into listener mode
-	cmd_buf[0] = myAddress + 0x20;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
-	if(errorFound){return 1;}
+	    // Set the controller into listener mode
+	    cmd_buf[0] = myAddress + 0x20;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	    if(errorFound){return 1;}
 	
-	// Set target device into talker mode
-	cmd_buf[0] = partnerAddress + 0x40;
-	errorFound = gpib_cmd(cmd_buf, 1);
-	if(errorFound){return 1;}
+	    // Set target device into talker mode
+	    cmd_buf[0] = partnerAddress + 0x40;
+	    errorFound = gpib_cmd(cmd_buf, 1);
+	    if(errorFound){return 1;}
+	}
 	
 	i = 0;
 	bufPnt = &readBuf[0];
@@ -944,6 +951,14 @@ void main(void) {
 				            mode = 1; // If non-bool sent, set to control mode
 				        }
 				    }
+				    if (mode) {
+				        output_high(SC); // Allows transmit on REN and IFC
+	                    output_low(DC); // Transmit ATN and receive SRQ
+				    }
+				    else {
+				        output_low(SC); // Allows receive on REN and IFC
+	                    output_high(DC); // Receive ATN and transmit SRQ
+				    }
 				}
 				// ++savecfg {0|1}
 				else if(strncmp((char*)buf_pnt,(char*)savecfgBuf,9)==0) {
@@ -973,27 +988,27 @@ void main(void) {
 				else{
 				    if (debug == 1) {printf("Unrecognized command.%c", eot_char);}
 				}
-				
-				
 			} 
-			else { // Not an internal command, send to bus
-				// Command all talkers and listeners to stop
-				// and tell target to listen.
-				writeError = writeError || addressTarget(partnerAddress);
-				
-				// Set the controller into talker mode
-				cmd_buf[0] = myAddress + 0x40;
-				writeError = writeError || gpib_cmd(cmd_buf, 1);
-				
-				// Send out command to the bus
-				#ifdef VERBOSE_DEBUG
-				printf("gpib_write: %s%c",buf_pnt, eot_char);
-				#endif
+			else { 
+		        // Not an internal command, send to bus
+			    // Command all talkers and listeners to stop
+			    // and tell target to listen.
+			    writeError = writeError || addressTarget(partnerAddress);
+			
+			    // Set the controller into talker mode
+			    cmd_buf[0] = myAddress + 0x40;
+			    writeError = writeError || gpib_cmd(cmd_buf, 1);
+			
+			    // Send out command to the bus
+			    #ifdef VERBOSE_DEBUG
+			    printf("gpib_write: %s%c",buf_pnt, eot_char);
+			    #endif
 				
 				if(eos_code != 3) { // If have an EOS char, need to output 
 				                    // termination byte to inst
                     writeError = writeError || gpib_write(buf_pnt, 0, 0);
-					writeError = gpib_write(eos_string, 0, eoiUse);
+                    if (!writeError)
+					    writeError = gpib_write(eos_string, 0, eoiUse);
 					#ifdef VERBOSE_DEBUG
 				    printf("eos_string: %s",eos_string);
 				    #endif
@@ -1003,7 +1018,7 @@ void main(void) {
 				}
 				
 				// If cmd contains a question mark -> is a query
-				if(autoread){
+				if(autoread) {
 				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
 					    if(gpib_read(eoiUse)){
 					        if (debug == 1){
@@ -1022,10 +1037,45 @@ void main(void) {
 					    //reset_cpu();
 				    }
 				}
-				
-			}
+			} // end of sending internal command
 
 		} // End of receiving PC input
-	} // End of main execution loop
+		
+        if (!mode) {
+            // When in device mode we should be checking the status of the 
+            // ATN line to see what we should be doing
+            if (!input(ATN)) {
+                gpib_receive(cmd_buf); // Get the CMD byte sent by the controller
+                if (cmd_buf[0] == partnerAddress + 0x40) {
+                    device_talk = true;
+                }
+                else if (cmd_buf[0] == partnerAddress + 0x20) {
+                    device_listen = true;
+                }
+                else if (cmd_buf[0] == CMD_UNL) {
+                    device_listen = false;
+                }
+                else if (cmd_buf[0] == CMD_UNT) {
+                    device_talk = false;
+                }
+                else if (cmd_buf[0] == CMD_SPE) {
+                    device_srq = true;
+                }
+                else if (cmd_buf[0] == CMD_SPD) {
+                    device_srq = false;
+                }
+            }
+            else if (device_listen) {
+                gpib_read(eoiUse);
+                device_listen = false;
+            }
+            else if (device_talk && device_srq) {
+                // TODO: write status byte to gpib bus
+                device_srq = false;
+                device_listen = false;
+            }
+        }
+		
+    } // End of main execution loop
 
 }
