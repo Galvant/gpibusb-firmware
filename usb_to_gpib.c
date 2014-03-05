@@ -524,12 +524,14 @@ char gpib_read(boolean read_until_eoi) {
 	printf("gpib_read loop end\n\r");
 	#endif
 	
-	errorFound = 0;
-	// Command all talkers and listeners to stop
-	cmd_buf[0] = CMD_UNT;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
-	cmd_buf[0] = CMD_UNL;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	if (mode) {
+	    errorFound = 0;
+	    // Command all talkers and listeners to stop
+	    cmd_buf[0] = CMD_UNT;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	    cmd_buf[0] = CMD_UNL;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	}
 	
 	#ifdef VERBOSE_DEBUG
 	printf("gpib_read end\n\r");
