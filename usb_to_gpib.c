@@ -993,32 +993,36 @@ void main(void) {
 		        // Not an internal command, send to bus
 			    // Command all talkers and listeners to stop
 			    // and tell target to listen.
-			    writeError = writeError || addressTarget(partnerAddress);
+			    if (mode) {
+			        writeError = writeError || addressTarget(partnerAddress);
 			
-			    // Set the controller into talker mode
-			    cmd_buf[0] = myAddress + 0x40;
-			    writeError = writeError || gpib_cmd(cmd_buf, 1);
+			        // Set the controller into talker mode
+			        cmd_buf[0] = myAddress + 0x40;
+			        writeError = writeError || gpib_cmd(cmd_buf, 1);
+		        }
 			
 			    // Send out command to the bus
 			    #ifdef VERBOSE_DEBUG
 			    printf("gpib_write: %s%c",buf_pnt, eot_char);
 			    #endif
 				
-				if(eos_code != 3) { // If have an EOS char, need to output 
-				                    // termination byte to inst
-                    writeError = writeError || gpib_write(buf_pnt, 0, 0);
-                    if (!writeError)
-					    writeError = gpib_write(eos_string, 0, eoiUse);
-					#ifdef VERBOSE_DEBUG
-				    printf("eos_string: %s",eos_string);
-				    #endif
-				}
-				else {
-				    writeError = writeError || gpib_write(buf_pnt, 0, 1);
+				if (mode || device_talk) {
+				    if(eos_code != 3) { // If have an EOS char, need to output 
+				                        // termination byte to inst
+                        writeError = writeError || gpib_write(buf_pnt, 0, 0);
+                        if (!writeError)
+					        writeError = gpib_write(eos_string, 0, eoiUse);
+					    #ifdef VERBOSE_DEBUG
+				        printf("eos_string: %s",eos_string);
+				        #endif
+				    }
+				    else {
+				        writeError = writeError || gpib_write(buf_pnt, 0, 1);
+				    }
 				}
 				
 				// If cmd contains a question mark -> is a query
-				if(autoread) {
+				if(autoread && mode) {
 				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
 					    if(gpib_read(eoiUse)){
 					        if (debug == 1){
