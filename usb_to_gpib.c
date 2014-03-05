@@ -739,7 +739,7 @@ void main(void) {
 				    }
 				}
 				// +read
-				else if(strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) { 
+				else if((strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) && (mode)) { 
 					if(gpib_read(eoiUse)){
 					    if (debug == 1) {printf("Read error occured.%c", eot_char);}
 					    //delay_ms(1);
@@ -747,7 +747,7 @@ void main(void) {
 					}
 				}
 				// ++read
-				else if(strncmp((char*)buf_pnt+1,(char*)readCmdBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt+1,(char*)readCmdBuf,5)==0) && (mode)) {
 				    if (*(buf_pnt+6) == 0x00) {
 				        gpib_read(false); // read until EOS condition
 			        }
@@ -837,13 +837,18 @@ void main(void) {
 					printf("%i%c", version, eot_char);
 				}
 				// +get
-				else if(strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) { 
-					// Send a Group Execute Trigger (GET) bus command
-					cmd_buf[0] = CMD_GET;
-					gpib_cmd(cmd_buf, 1);
+				else if((strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) && (mode)) { 
+					if (*(buf_pnt+5) == 0x00) {
+				        writeError = writeError || addressTarget(partnerAddress);
+				        cmd_buf[0] = CMD_GET;
+					    gpib_cmd(cmd_buf, 1);
+				    }
+				    /*else if (*(buf_pnt+5) == 32) {
+				        TODO: Add support for specified addresses
+				    }*/
 				}
 				// ++trg
-				else if(strncmp((char*)buf_pnt,(char*)trgBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)trgBuf,5)==0) && (mode)) {
 				    if (*(buf_pnt+5) == 0x00) {
 				        writeError = writeError || addressTarget(partnerAddress);
 				        cmd_buf[0] = CMD_GET;
@@ -884,7 +889,7 @@ void main(void) {
 					debug = atoi((char*)(buf_pnt+7));
 				}
 				// ++clr
-				else if(strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) && (mode)) {
 				    // This command is special in that we must
 				    // address a specific instrument.
 				    writeError = writeError || addressTarget(partnerAddress);
@@ -913,25 +918,25 @@ void main(void) {
 				    }
 				}
 				// ++ifc
-				else if(strncmp((char*)buf_pnt,(char*)ifcBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)ifcBuf,5)==0) && (mode)) {
 				    output_low(IFC); // Assert interface clear.
 	                delay_us(150);
 	                output_float(IFC); // Finishing clearing interface
 				}
 				// ++llo
-				else if(strncmp((char*)buf_pnt,(char*)lloBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)lloBuf,5)==0) && (mode)) {
 				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_LLO;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				// ++loc
-				else if(strncmp((char*)buf_pnt,(char*)locBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)locBuf,5)==0) && (mode)) {
 				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_GTL;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				// ++lon {0|1}
-				else if(strncmp((char*)buf_pnt,(char*)lonBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)lonBuf,5)==0) && (!mode)) {
 				    if (*(buf_pnt+5) == 0x00) {
 				        printf("%i%c", listen_only, eot_char);
 				    }
@@ -975,11 +980,11 @@ void main(void) {
 				    }
 				}
 				// ++srq
-				else if(strncmp((char*)buf_pnt,(char*)srqBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)srqBuf,5)==0) && (mode)) {
 				    printf("%i%c", srq_state(), eot_char);
 				}
 				// ++spoll N
-				else if(strncmp((char*)buf_pnt,(char*)spollBuf,7)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)spollBuf,7)==0) && (mode)) {
 				    if (*(buf_pnt+7) == 0x00) {
 				        serial_poll(partnerAddress);
 				    }
