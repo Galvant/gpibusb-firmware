@@ -834,7 +834,7 @@ void main(void) {
 				}
 				// ++ver
 				else if(strncmp((char*)buf_pnt+1,(char*)versionBuf,4)==0) { 
-					printf("%i%c", version, eot_char);
+					printf("Version %i.0%c", version, eot_char);
 				}
 				// +get
 				else if((strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) && (mode)) { 
