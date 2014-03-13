@@ -42,7 +42,8 @@ char cmd_buf[10], buf[buf_size+20];
 unsigned int buf_out = 0;
 unsigned int buf_in = 0;
 
-int partnerAddress, myAddress;
+int partnerAddress = 1;
+int myAddress;
 
 char newCmd = 0;
 char eos = 10; // Default end of string character.
@@ -59,9 +60,15 @@ char eot_char = 13; // default CR
 char listen_only = 0;
 char mode = 1;
 char save_cfg = 1;
+unsigned int status_byte = 0;
 
 unsigned int32 timeout = 1000;
 unsigned int32 seconds = 0;
+
+// Variables for device mode
+boolean device_talk = false;
+boolean device_listen = false;
+boolean device_srq = false;
 
 #define WITH_TIMEOUT
 #define WITH_WDT
@@ -113,9 +120,15 @@ void prep_gpib_pins() {
 	output_low(TE); // Disables talking on data and handshake lines
 	//output_high(PE); // Enable dataline pullup resistors
 	output_low(PE);
-
-	output_high(SC); // Allows transmit on REN and IFC
-	output_low(DC); // Transmit ATN and receive SRQ
+    
+    if (mode) {
+	    output_high(SC); // Allows transmit on REN and IFC
+	    output_low(DC); // Transmit ATN and receive SRQ
+	}
+	else {
+	    output_low(SC);
+	    output_high(DC);
+	}
 
 	output_float(DIO1);
 	output_float(DIO2);
@@ -126,14 +139,26 @@ void prep_gpib_pins() {
 	output_float(DIO7);
 	output_float(DIO8);
 	
-	output_high(ATN);
-	output_float(EOI);
-	output_float(DAV);
-	output_low(NRFD);
-	output_low(NDAC);
-	output_high(IFC);
-	output_float(SRQ);
-	output_high(REN);
+	if (mode) {
+	    output_high(ATN);
+	    output_float(EOI);
+	    output_float(DAV);
+	    output_low(NRFD);
+	    output_low(NDAC);
+	    output_high(IFC);
+	    output_float(SRQ);
+	    output_high(REN);
+	}
+	else {
+	    output_float(ATN);
+	    output_float(EOI);
+	    output_float(DAV);
+	    output_float(NRFD);
+	    output_float(NDAC);
+	    output_float(IFC);
+	    output_float(SRQ);
+	    output_float(REN);
+	}
 }
 
 void gpib_init() {
@@ -197,11 +222,38 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 	output_high(EOI);
 	output_high(DAV);
 	output_float(NRFD);
+	output_float(NDAC);
+	
+	// Before we start transfering, we have to make sure that NRFD is high
+	// and NDAC is low
+#ifdef WITH_TIMEOUT
+	seconds = 0;
+	enable_interrupts(INT_TIMER2);
+	while((input(NDAC) || !(input(NRFD))) && (seconds <= timeout)) {
+	    restart_wdt();
+		if(seconds >= timeout) {
+		    if (debug == 1) {
+			    printf("Timeout: Before writing %c %x ", bytes[0], bytes[0]);
+			}
+			device_talk = false;
+			device_srq = false;
+			prep_gpib_pins();
+			return 1;
+		}
+	}
+	disable_interrupts(INT_TIMER2);
+#else
+	while(input(NDAC)){} 
+#endif
+	
+	
 	
 	for(i = 0;i < length;i++) { //Loop through each character, write to bus
 		a = bytes[i]; // So I don't have to keep typing bytes[i]
 		
-		output_float(NDAC);
+		#ifdef VERBOSE_DEBUG
+		printf("Writing byte: %c %x %c", a, a, eot_char);
+		#endif
 		
 		// Wait for NDAC to go low, indicating previous bit is now done with
 #ifdef WITH_TIMEOUT
@@ -213,6 +265,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 			    if (debug == 1) {
 				    printf("Timeout: Waiting for NDAC to go low while writing");
 				}
+				device_talk = false;
+				device_srq = false;
+				prep_gpib_pins();
 				return 1;
 			}
 		}
@@ -237,6 +292,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 			    if (debug == 1) {
 				    printf("Timeout: Waiting for NRFD to go high while writing");
 			    }
+			    device_talk = false;
+			    device_srq = false;
+			    prep_gpib_pins();
 				return 1;
 			}
 		}
@@ -262,6 +320,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 			    if (debug == 1) {
 			        printf("Timeout: Waiting for NDAC to go high while writing");
 			    }
+			    device_talk = false;
+			    device_srq = false;
+			    prep_gpib_pins();
 				return 1;
 			}
 		}
@@ -270,7 +331,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		while(!(input(NDAC))){} 
 #endif
 		
-		output_float(DAV); // Byte has been accepted by all, indicate 
+		output_high(DAV); // Byte has been accepted by all, indicate 
 		                   // byte is no longer valid
 		
 	} // Finished outputing all bytes to listeners
@@ -288,7 +349,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 	output_float(DIO8);
 	
 	if(attention) { // If byte was a gpib cmd byte
-		output_float(ATN); // Release ATN line
+		output_high(ATN); // Release ATN line
 	}
 	
 	output_float(DAV);
@@ -324,6 +385,8 @@ char gpib_receive(char *byt) {
 		    if (debug == 1) {
 			    printf("Timeout: Waiting for DAV to go low while reading");
 		    }
+		    device_listen = false;
+		    prep_gpib_pins();
 			return 0xff;
 		}
 	}
@@ -338,6 +401,11 @@ char gpib_receive(char *byt) {
 	// Read port B, where the data lines are connected	
 	a = input_b();
 	a = a^0xff; // Flip all bits since GPIB uses negative logic.
+	eoiStatus = input(EOI);
+	
+	#ifdef VERBOSE_DEBUG
+	printf("Got byte: %c %x ", a, a);
+	#endif
 	
 	// Un-assert NDAC, informing talker that we have accepted the byte
 	output_float(NDAC); 
@@ -352,6 +420,8 @@ char gpib_receive(char *byt) {
 		    if (debug == 1){
 			    printf("Timeout: Waiting for DAV to go high while reading");
 		    }
+		    device_listen = false;
+		    prep_gpib_pins();
 			return 0xff;
 		}
 	}
@@ -363,7 +433,9 @@ char gpib_receive(char *byt) {
 	// Prep for next byte, we have not accepted anything
 	output_low(NDAC);
 	
-	eoiStatus = input(EOI);
+	#ifdef VERBOSE_DEBUG
+	printf("EOI: %c%c", eoiStatus, eot_char);
+	#endif
 	
 	*byt = a;
 	
@@ -384,22 +456,24 @@ char gpib_read(boolean read_until_eoi) {
 	printf("gpib_read start\n\r");
 	#endif
 	
-	// Command all talkers and listeners to stop
-	cmd_buf[0] = CMD_UNT;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
-	cmd_buf[0] = CMD_UNL;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
-	if(errorFound){return 1;}
+	if (mode) {
+	    // Command all talkers and listeners to stop
+	    cmd_buf[0] = CMD_UNT;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	    cmd_buf[0] = CMD_UNL;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	    if(errorFound){return 1;}
 	
-	// Set the controller into listener mode
-	cmd_buf[0] = myAddress + 0x20;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
-	if(errorFound){return 1;}
+	    // Set the controller into listener mode
+	    cmd_buf[0] = myAddress + 0x20;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	    if(errorFound){return 1;}
 	
-	// Set target device into talker mode
-	cmd_buf[0] = partnerAddress + 0x40;
-	errorFound = gpib_cmd(cmd_buf, 1);
-	if(errorFound){return 1;}
+	    // Set target device into talker mode
+	    cmd_buf[0] = partnerAddress + 0x40;
+	    errorFound = gpib_cmd(cmd_buf, 1);
+	    if(errorFound){return 1;}
+	}
 	
 	i = 0;
 	bufPnt = &readBuf[0];
@@ -517,17 +591,19 @@ char gpib_read(boolean read_until_eoi) {
 	printf("gpib_read loop end\n\r");
 	#endif
 	
-	errorFound = 0;
-	// Command all talkers and listeners to stop
-	cmd_buf[0] = CMD_UNT;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
-	cmd_buf[0] = CMD_UNL;
-	errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	if (mode) {
+	    errorFound = 0;
+	    // Command all talkers and listeners to stop
+	    cmd_buf[0] = CMD_UNT;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	    cmd_buf[0] = CMD_UNL;
+	    errorFound = errorFound || gpib_cmd(cmd_buf, 1);
+	}
 	
 	#ifdef VERBOSE_DEBUG
 	printf("gpib_read end\n\r");
 	#endif
-
+    
 	return errorFound;
 }
 
@@ -608,13 +684,13 @@ void main(void) {
 	char lloBuf[6] = "++llo";
 	char locBuf[6] = "++loc";
 	char lonBuf[6] = "++lon"; //TODO: Listen mode
-	char modeBuf[7] = "++mode"; //TODO: Device mode
+	char modeBuf[7] = "++mode";
 	char readTimeoutBuf[14] = "++read_tmo_ms";
 	char rstBuf[6] = "++rst";
 	char savecfgBuf[10] = "++savecfg"; //TODO: Actually save to eeprom
 	char spollBuf[8] = "++spoll";
 	char srqBuf[6] = "++srq";
-	char statusBuf[9] = "++status"; // //TODO Device mode status byte
+	char statusBuf[9] = "++status";
 	char trgBuf[6] = "++trg";
 	char verBuf[6] = "++ver";
 	char helpBuf[7] = "++help"; //TODO
@@ -639,7 +715,9 @@ void main(void) {
 	
 	// Start all the GPIB related stuff
 	gpib_init(); // Initialize the GPIB Bus
-	writeError = gpib_controller_assign(0x00);
+	if (mode) {
+	    writeError = gpib_controller_assign(0x00);
+    }
 	
 	// If no instruments are connected, keep rebooting until there is
 	if(writeError == 1) {
@@ -730,15 +808,15 @@ void main(void) {
 				    }
 				}
 				// +read
-				else if(strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) { 
+				else if((strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) && (mode)) { 
 					if(gpib_read(eoiUse)){
 					    if (debug == 1) {printf("Read error occured.%c", eot_char);}
-					    delay_ms(1);
-						reset_cpu();
+					    //delay_ms(1);
+						//reset_cpu();
 					}
 				}
 				// ++read
-				else if(strncmp((char*)buf_pnt+1,(char*)readCmdBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt+1,(char*)readCmdBuf,5)==0) && (mode)) {
 				    if (*(buf_pnt+6) == 0x00) {
 				        gpib_read(false); // read until EOS condition
 			        }
@@ -825,16 +903,21 @@ void main(void) {
 				}
 				// ++ver
 				else if(strncmp((char*)buf_pnt+1,(char*)versionBuf,4)==0) { 
-					printf("%i%c", version, eot_char);
+					printf("Version %i.0%c", version, eot_char);
 				}
 				// +get
-				else if(strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) { 
-					// Send a Group Execute Trigger (GET) bus command
-					cmd_buf[0] = CMD_GET;
-					gpib_cmd(cmd_buf, 1);
+				else if((strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) && (mode)) { 
+					if (*(buf_pnt+5) == 0x00) {
+				        writeError = writeError || addressTarget(partnerAddress);
+				        cmd_buf[0] = CMD_GET;
+					    gpib_cmd(cmd_buf, 1);
+				    }
+				    /*else if (*(buf_pnt+5) == 32) {
+				        TODO: Add support for specified addresses
+				    }*/
 				}
 				// ++trg
-				else if(strncmp((char*)buf_pnt,(char*)trgBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)trgBuf,5)==0) && (mode)) {
 				    if (*(buf_pnt+5) == 0x00) {
 				        writeError = writeError || addressTarget(partnerAddress);
 				        cmd_buf[0] = CMD_GET;
@@ -875,7 +958,7 @@ void main(void) {
 					debug = atoi((char*)(buf_pnt+7));
 				}
 				// ++clr
-				else if(strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) && (mode)) {
 				    // This command is special in that we must
 				    // address a specific instrument.
 				    writeError = writeError || addressTarget(partnerAddress);
@@ -904,25 +987,25 @@ void main(void) {
 				    }
 				}
 				// ++ifc
-				else if(strncmp((char*)buf_pnt,(char*)ifcBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)ifcBuf,5)==0) && (mode)) {
 				    output_low(IFC); // Assert interface clear.
 	                delay_us(150);
 	                output_float(IFC); // Finishing clearing interface
 				}
 				// ++llo
-				else if(strncmp((char*)buf_pnt,(char*)lloBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)lloBuf,5)==0) && (mode)) {
 				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_LLO;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				// ++loc
-				else if(strncmp((char*)buf_pnt,(char*)locBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)locBuf,5)==0) && (mode)) {
 				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_GTL;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				// ++lon {0|1}
-				else if(strncmp((char*)buf_pnt,(char*)lonBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)lonBuf,5)==0) && (!mode)) {
 				    if (*(buf_pnt+5) == 0x00) {
 				        printf("%i%c", listen_only, eot_char);
 				    }
@@ -944,6 +1027,14 @@ void main(void) {
 				            mode = 1; // If non-bool sent, set to control mode
 				        }
 				    }
+				    if (mode) {
+				        output_high(SC); // Allows transmit on REN and IFC
+	                    output_low(DC); // Transmit ATN and receive SRQ
+				    }
+				    else {
+				        output_low(SC); // Allows receive on REN and IFC
+	                    output_high(DC); // Receive ATN and transmit SRQ
+				    }
 				}
 				// ++savecfg {0|1}
 				else if(strncmp((char*)buf_pnt,(char*)savecfgBuf,9)==0) {
@@ -958,11 +1049,11 @@ void main(void) {
 				    }
 				}
 				// ++srq
-				else if(strncmp((char*)buf_pnt,(char*)srqBuf,5)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)srqBuf,5)==0) && (mode)) {
 				    printf("%i%c", srq_state(), eot_char);
 				}
 				// ++spoll N
-				else if(strncmp((char*)buf_pnt,(char*)spollBuf,7)==0) {
+				else if((strncmp((char*)buf_pnt,(char*)spollBuf,7)==0) && (mode)) {
 				    if (*(buf_pnt+7) == 0x00) {
 				        serial_poll(partnerAddress);
 				    }
@@ -970,47 +1061,60 @@ void main(void) {
 				        serial_poll(atoi((char*)(buf_pnt+8)));
 				    }
 				}
+				// ++status
+				else if((strncmp((char*)buf_pnt,(char*)statusBuf,8)==0) && (!mode)) {
+				    if (*(buf_pnt+8) == 0x00) {
+				       printf("%u%c", status_byte, eot_char);
+				    }
+				    else if (*(buf_pnt+8) == 32) {
+				        status_byte = atoi((char*)(buf_pnt+9));;
+				    }
+				}
 				else{
 				    if (debug == 1) {printf("Unrecognized command.%c", eot_char);}
 				}
-				
-				
 			} 
-			else { // Not an internal command, send to bus
-				// Command all talkers and listeners to stop
-				// and tell target to listen.
-				writeError = writeError || addressTarget(partnerAddress);
+			else { 
+		        // Not an internal command, send to bus
+			    // Command all talkers and listeners to stop
+			    // and tell target to listen.
+			    if (mode) {
+			        writeError = writeError || addressTarget(partnerAddress);
+			
+			        // Set the controller into talker mode
+			        cmd_buf[0] = myAddress + 0x40;
+			        writeError = writeError || gpib_cmd(cmd_buf, 1);
+		        }
+			
+			    // Send out command to the bus
+			    #ifdef VERBOSE_DEBUG
+			    printf("gpib_write: %s%c",buf_pnt, eot_char);
+			    #endif
 				
-				// Set the controller into talker mode
-				cmd_buf[0] = myAddress + 0x40;
-				writeError = writeError || gpib_cmd(cmd_buf, 1);
-				
-				// Send out command to the bus
-				#ifdef VERBOSE_DEBUG
-				printf("gpib_write: %s%c",buf_pnt, eot_char);
-				#endif
-				
-				if(eos_code != 3) { // If have an EOS char, need to output 
-				                    // termination byte to inst
-                    writeError = writeError || gpib_write(buf_pnt, 0, 0);
-					writeError = gpib_write(eos_string, 0, eoiUse);
-					#ifdef VERBOSE_DEBUG
-				    printf("eos_string: %s",eos_string);
-				    #endif
-				}
-				else {
-				    writeError = writeError || gpib_write(buf_pnt, 0, 1);
+				if (mode || device_talk) {
+				    if(eos_code != 3) { // If have an EOS char, need to output 
+				                        // termination byte to inst
+                        writeError = writeError || gpib_write(buf_pnt, 0, 0);
+                        if (!writeError)
+					        writeError = gpib_write(eos_string, 0, eoiUse);
+					    #ifdef VERBOSE_DEBUG
+				        printf("eos_string: %s",eos_string);
+				        #endif
+				    }
+				    else {
+				        writeError = writeError || gpib_write(buf_pnt, 0, 1);
+				    }
 				}
 				
 				// If cmd contains a question mark -> is a query
-				if(autoread){
+				if(autoread && mode) {
 				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
 					    if(gpib_read(eoiUse)){
 					        if (debug == 1){
 					            printf("Read error occured.%c", eot_char);
 				            }
-					        delay_ms(1);
-						    reset_cpu();
+					        //delay_ms(1);
+						    //reset_cpu();
 					    }
 				    }
 				    else if(writeError){
@@ -1018,14 +1122,97 @@ void main(void) {
 					    if (debug == 1){
 					        printf("Write error occured.%c", eot_char);
 				        }
-					    delay_ms(1);
-					    reset_cpu();
+					    //delay_ms(1);
+					    //reset_cpu();
 				    }
 				}
-				
-			}
+			} // end of sending internal command
 
 		} // End of receiving PC input
-	} // End of main execution loop
+		
+        if (!mode) {
+            // When in device mode we should be checking the status of the 
+            // ATN line to see what we should be doing
+            if (!input(ATN)) {
+                if (!input(ATN)) {
+                    output_low(NDAC);
+                    gpib_receive(cmd_buf); // Get the CMD byte sent by the controller
+                    output_high(NRFD);
+                    if (cmd_buf[0] == partnerAddress + 0x40) {
+                        device_talk = true;
+                        #ifdef VERBOSE_DEBUG
+                        printf("Instructed to talk%c", eot_char);
+                        #endif
+                    }
+                    else if (cmd_buf[0] == partnerAddress + 0x20) {
+                        device_listen = true;
+                        #ifdef VERBOSE_DEBUG
+                        printf("Instructed to listen%c", eot_char);
+                        #endif
+                    }
+                    else if (cmd_buf[0] == CMD_UNL) {
+                        device_listen = false;
+                        #ifdef VERBOSE_DEBUG
+                        printf("Instructed to stop listen%c", eot_char);
+                        #endif
+                    }
+                    else if (cmd_buf[0] == CMD_UNT) {
+                        device_talk = false;
+                        #ifdef VERBOSE_DEBUG
+                        printf("Instructed to stop talk%c", eot_char);
+                        #endif
+                    }
+                    else if (cmd_buf[0] == CMD_SPE) {
+                        device_srq = true;
+                        #ifdef VERBOSE_DEBUG
+                        printf("SQR start%c", eot_char);
+                        #endif
+                    }
+                    else if (cmd_buf[0] == CMD_SPD) {
+                        device_srq = false;
+                        #ifdef VERBOSE_DEBUG
+                        printf("SQR end%c", eot_char);
+                        #endif
+                    }
+                    else if (cmd_buf[0] == CMD_DCL) {
+                        printf("%c%c", CMD_DCL, eot_char);
+                        device_listen = false;
+                        device_talk = false;
+                        device_srq = false;
+                        status_byte = 0;
+                    }
+                    else if ((cmd_buf[0] == CMD_LLO) && (device_listen)) {
+                        printf("%c%c", CMD_LLO, eot_char);
+                    }
+                    else if ((cmd_buf[0] == CMD_GTL) && (device_listen)) {
+                        printf("%c%c", CMD_GTL, eot_char);
+                    }
+                    else if ((cmd_buf[0] == CMD_GET) && (device_listen)) {
+                        printf("%c%c", CMD_GET, eot_char);
+                    }
+                    output_high(NDAC);
+                }
+            }
+            else {
+                delay_us(10);
+                if(input(ATN)) {
+                    if ((device_listen)) {
+                        output_low(NDAC);
+                        #ifdef VERBOSE_DEBUG
+                        printf("Starting device mode gpib_read%c", eot_char);
+                        #endif
+                        gpib_read(eoiUse);
+                        device_listen = false;
+                    }
+                    else if (device_talk && device_srq) {
+                        gpib_write(&status_byte, 1, 0);
+                        device_srq = false;
+                        device_talk = false;
+                    }
+                }
+            }
+        }
+		
+    } // End of main execution loop
 
 }
