@@ -720,9 +720,9 @@ void main(void) {
     }
 	
 	// If no instruments are connected, keep rebooting until there is
-	if(writeError == 1) {
+	/*if(writeError == 1) {
 	    reset_cpu();
-    }
+    }*/
 
     /*
     * The following little block helps provide some visual feedback as to which
