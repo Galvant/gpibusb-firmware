@@ -718,6 +718,7 @@ void main(void) {
 	if (mode) {
 	    writeError = gpib_controller_assign(0x00);
     }
+    writeError = 0;
 	
 	// If no instruments are connected, keep rebooting until there is
 	/*if(writeError == 1) {
@@ -1027,13 +1028,9 @@ void main(void) {
 				            mode = 1; // If non-bool sent, set to control mode
 				        }
 				    }
+				    prep_gpib_pins();
 				    if (mode) {
-				        output_high(SC); // Allows transmit on REN and IFC
-	                    output_low(DC); // Transmit ATN and receive SRQ
-				    }
-				    else {
-				        output_low(SC); // Allows receive on REN and IFC
-	                    output_high(DC); // Receive ATN and transmit SRQ
+	                    gpib_controller_assign(0x00);
 				    }
 				}
 				// ++savecfg {0|1}
