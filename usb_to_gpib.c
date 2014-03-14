@@ -70,6 +70,9 @@ boolean device_talk = false;
 boolean device_listen = false;
 boolean device_srq = false;
 
+// EEPROM variables
+const char VALID_EEPROM_CODE = 0xAA;
+
 #define WITH_TIMEOUT
 #define WITH_WDT
 //#define VERBOSE_DEBUG
@@ -712,6 +715,57 @@ void main(void) {
 	enable_interrupts(GLOBAL);
 	disable_interrupts(INT_TIMER2);
 #endif
+
+    // Handle the EEPROM stuff
+    if (read_eeprom(0x00) == VALID_EEPROM_CODE) {
+        mode = read_eeprom(0x01);
+        partnerAddress = read_eeprom(0x02);
+        eot_char = read_eeprom(0x03);
+        eot_enable = read_eeprom(0x04);
+        eos_code = read_eeprom(0x05);
+        switch (eos_code) {
+            case 0:
+                eos_code = 0;
+                eos_string[0] = 13;
+                eos_string[1] = 10;
+                eos_string[2] = 0x00;
+                eos = 10;
+                break;
+            case 1:
+                eos_code = 1;
+                eos_string[0] = 13;
+                eos_string[1] = 0x00;
+                eos = 13;
+                break;
+            case 2:
+                eos_code = 2;
+                eos_string[0] = 10;
+                eos_string[1] = 0x00;
+                eos = 10;
+                break;
+            default:
+                eos_code = 3;
+                eos_string[0] = 0x00;
+                eos = 0;
+                break;
+        }
+        eoiUse = read_eeprom(0x06);
+        autoread = read_eeprom(0x07);
+        listen_only = read_eeprom(0x08);
+        save_cfg = read_eeprom(0x09);
+    }
+    else {
+        write_eeprom(0x00, VALID_EEPROM_CODE);
+        write_eeprom(0x01, 1); // mode
+        write_eeprom(0x02, 1); // partnerAddress
+        write_eeprom(0x03, 13); // eot_char
+        write_eeprom(0x04, 1); // eot_enable
+        write_eeprom(0x05, 3); // eos_code
+        write_eeprom(0x06, 1); // eoiUse
+        write_eeprom(0x07, 1); // autoread
+        write_eeprom(0x08, 0); // listen_only
+        write_eeprom(0x09, 1); // save_cfg
+    }
 	
 	// Start all the GPIB related stuff
 	gpib_init(); // Initialize the GPIB Bus
@@ -1027,10 +1081,10 @@ void main(void) {
 				        if ((mode != 0) && (mode != 1)) {
 				            mode = 1; // If non-bool sent, set to control mode
 				        }
-				    }
-				    prep_gpib_pins();
-				    if (mode) {
-	                    gpib_controller_assign(0x00);
+				        prep_gpib_pins();
+				        if (mode) {
+	                        gpib_controller_assign(0x00);
+				        }
 				    }
 				}
 				// ++savecfg {0|1}
@@ -1042,6 +1096,17 @@ void main(void) {
 				        save_cfg = atoi((char*)(buf_pnt+10));
 				        if ((save_cfg != 0) && (save_cfg != 1)) {
 				            save_cfg = 1; // If non-bool sent, set to enable
+				        }
+				        if (save_cfg == 1) {
+				            write_eeprom(0x01, mode);
+                            write_eeprom(0x02, partnerAddress);
+                            write_eeprom(0x03, eot_char);
+                            write_eeprom(0x04, eot_enable);
+                            write_eeprom(0x05, eos_code);
+                            write_eeprom(0x06, eoiUse);
+                            write_eeprom(0x07, autoread);
+                            write_eeprom(0x08, listen_only);
+                            write_eeprom(0x09, save_cfg);
 				        }
 				    }
 				}
