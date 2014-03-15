@@ -266,7 +266,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
-				    printf("Timeout: Waiting for NDAC to go low while writing");
+				    printf("Timeout: Waiting for NDAC to go low while writing%c", eot_char);
 				}
 				device_talk = false;
 				device_srq = false;
@@ -293,7 +293,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
-				    printf("Timeout: Waiting for NRFD to go high while writing");
+				    printf("Timeout: Waiting for NRFD to go high while writing%c", eot_char);
 			    }
 			    device_talk = false;
 			    device_srq = false;
@@ -321,7 +321,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		    restart_wdt();
 			if(seconds >= timeout) {
 			    if (debug == 1) {
-			        printf("Timeout: Waiting for NDAC to go high while writing");
+			        printf("Timeout: Waiting for NDAC to go high while writing%c", eot_char);
 			    }
 			    device_talk = false;
 			    device_srq = false;
@@ -386,7 +386,7 @@ char gpib_receive(char *byt) {
 	    restart_wdt();
 		if(seconds >= timeout) {
 		    if (debug == 1) {
-			    printf("Timeout: Waiting for DAV to go low while reading");
+			    printf("Timeout: Waiting for DAV to go low while reading%c", eot_char);
 		    }
 		    device_listen = false;
 		    prep_gpib_pins();
@@ -421,7 +421,7 @@ char gpib_receive(char *byt) {
 	    restart_wdt();
 		if(seconds >= timeout) {
 		    if (debug == 1){
-			    printf("Timeout: Waiting for DAV to go high while reading");
+			    printf("Timeout: Waiting for DAV to go high while reading%c", eot_char);
 		    }
 		    device_listen = false;
 		    prep_gpib_pins();
@@ -586,7 +586,6 @@ char gpib_read(boolean read_until_eoi) {
 	}
 	
 	if (eot_enable == 1) {
-		//printf("\r"); // Include a CR to signal end of serial transmission
 		printf("%c", eot_char);
 	}
 	
@@ -1171,19 +1170,19 @@ void main(void) {
 				// If cmd contains a question mark -> is a query
 				if(autoread && mode) {
 				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
-					    if(gpib_read(eoiUse)){
-					        if (debug == 1){
-					            printf("Read error occured.%c", eot_char);
-				            }
+					    gpib_read(eoiUse);
+					        //if (debug == 1){
+					        //    printf("Read error occured.%c", eot_char);
+				            //}
 					        //delay_ms(1);
 						    //reset_cpu();
-					    }
+					    
 				    }
 				    else if(writeError){
 					    writeError = 0;
-					    if (debug == 1){
-					        printf("Write error occured.%c", eot_char);
-				        }
+					    //if (debug == 1){
+					    //    printf("Write error occured.%c", eot_char);
+				        //}
 					    //delay_ms(1);
 					    //reset_cpu();
 				    }
