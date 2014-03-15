@@ -150,7 +150,7 @@ void prep_gpib_pins() {
 	    output_low(NDAC);
 	    output_high(IFC);
 	    output_float(SRQ);
-	    output_high(REN);
+	    output_low(REN);
 	}
 	else {
 	    output_float(ATN);
