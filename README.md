@@ -344,7 +344,7 @@ revision is marked on the silkscreen on the adapter PCB.
 
 revB/rev2: v1 - v3
 
-rev3 family (ie 3.1, 3.2): v4
+rev3 family (ie 3.1, 3.2): v4-v5
 
 License
 -------
