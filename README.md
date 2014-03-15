@@ -207,7 +207,9 @@ Make sure to wait a few seoncds after sending this command for the adapter to fu
 ```
 Saves current settings to EEPROM so that they can be preserved through restarts and power cycles.
 Although you can query the savecfg value with ``++savecfg``, this is only done for compatibility
-reasons. The only way to save your settings to EEPROM is to send ``++savecfg 1``.
+reasons. The only way to save your settings to EEPROM is to send ``++savecfg 1``. The following
+variables are saved: ``++mode``, ``++addr``, ``++eot_char``, ``++eot_enable``, ``++eos``, ``++eoi``,
+and ``++auto``.
 
 ```
 ++spoll
