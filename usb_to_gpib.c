@@ -982,6 +982,18 @@ void main(void) {
 				else if(strncmp((char*)buf_pnt,(char*)debugBuf,7)==0) { 
 					debug = atoi((char*)(buf_pnt+7));
 				}
+				// ++debug {0|1}
+				else if(strncmp((char*)buf_pnt+1,(char*)debugBuf,6)==0) { 
+					if (*(buf_pnt+7) == 0x00) {
+				        printf("%i%c", debug, eot_char);
+				    }
+				    else if (*(buf_pnt+7) == 32) {
+				        debug = atoi((char*)(buf_pnt+8));
+				        if ((debug != 0) && (debug != 1)) {
+				            debug = 0; // If non-bool sent, set to disabled
+				        }
+				    }
+				}
 				// ++clr
 				else if((strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) && (mode)) {
 				    // This command is special in that we must
