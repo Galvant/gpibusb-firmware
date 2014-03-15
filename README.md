@@ -68,20 +68,26 @@ $usermod -a -G dialout steven
 Where steven is replaced with your user account name. Depending on your permissions you may need 
 run this with sudo or as root.
 
+In addition, it has been found that the software package ``modemmanager`` holds serial ports
+hostage for about 30 seconds when initially connected. If you have this problem and do not require
+this package it is recommended that you remove it from your system.
+
 Communication
 ---------------
 
 Baudrate: 460800
 
-All writes to the adapter must end with a carriage return ('\r' or dec:13).
+All writes to the adapter must end with a carriage return, line-feed ('\r' dec:13 or '\n' dec:10)
+or some combination.
 
-All responses from the adapter will have a CR added.
+By default, all responses from the adapter will have a CR added. This can be changed with the 
+``++eot_char`` command.
 
 A small delay (0.01sec) should be added between successive commands to ensure that everything
 is given time to complete.
 
-The input buffer is 1000 bytes in size. All single continuous chunks of data from the PC should be 
-strictly less than 1000 bytes in length.
+The input buffer is about 200 bytes in size. All single continuous chunks of data from the PC should be 
+strictly less than 200 bytes in length. This does not impact responces from GPIB devices to the adapter.
 
 Command List v5
 ---------------
@@ -115,6 +121,14 @@ on EOI if ``++eoi 1`` is set, or will terminate on EOS charactrs if ``++eoi 0`` 
 ++clr
 ```
 Sends the "Selected Device Clear" (SDC) to the currently specified GPIB address as per ```++addr```.
+
+```
+++debug 0
+```
+Used to toggle simple debug messages on (1) and off (0). When set to on, communicaiton timeout 
+error messages are sent to the host PC containing basic details as to when and what timed-out.
+This includes which data line timed-out (DAV, NDAC, NRFD), if you were waiting for it to go high or low, 
+as well as if the adapter was reading or writing. Default is off.
 
 ```
 ++eoi 1
