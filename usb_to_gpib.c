@@ -121,7 +121,6 @@ char buf_get(char *pnt) {
 // Puts all the GPIB pins into their correct initial states.
 void prep_gpib_pins() {
 	output_low(TE); // Disables talking on data and handshake lines
-	//output_high(PE); // Enable dataline pullup resistors
 	output_low(PE);
     
     if (mode) {
@@ -229,7 +228,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 	
 	// Before we start transfering, we have to make sure that NRFD is high
 	// and NDAC is low
-#ifdef WITH_TIMEOUT
+    #ifdef WITH_TIMEOUT
 	seconds = 0;
 	enable_interrupts(INT_TIMER2);
 	while((input(NDAC) || !(input(NRFD))) && (seconds <= timeout)) {
@@ -245,9 +244,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		}
 	}
 	disable_interrupts(INT_TIMER2);
-#else
+    #else
 	while(input(NDAC)){} 
-#endif
+    #endif
 	
 	
 	
@@ -259,7 +258,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		#endif
 		
 		// Wait for NDAC to go low, indicating previous bit is now done with
-#ifdef WITH_TIMEOUT
+    #ifdef WITH_TIMEOUT
 		seconds = 0;
 		enable_interrupts(INT_TIMER2);
 		while(input(NDAC) && (seconds <= timeout)) {
@@ -275,9 +274,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 			}
 		}
 		disable_interrupts(INT_TIMER2);
-#else
+    #else
 		while(input(NDAC)){} 
-#endif
+    #endif
 
 		// Put the byte on the data lines
 		a = a^0xff;
@@ -286,7 +285,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 		output_float(NRFD);
 
 		// Wait for listeners to be ready for data (NRFD should be high)
-#ifdef WITH_TIMEOUT
+    #ifdef WITH_TIMEOUT
 		seconds = 0;
 		enable_interrupts(INT_TIMER2);
 		while(!(input(NRFD)) && (seconds <= timeout)) {
@@ -302,9 +301,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 			}
 		}
 		disable_interrupts(INT_TIMER2);
-#else		
+    #else		
 		while(!(input(NRFD))){}
-#endif
+    #endif
 		
 		if((i==length-1) && (useEOI)) { // If last byte in string
 			output_low(EOI); // Assert EOI
@@ -314,7 +313,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 
 		
 		// Wait for NDAC to go high, all listeners have accepted the byte
-#ifdef WITH_TIMEOUT
+    #ifdef WITH_TIMEOUT
 		seconds = 0;
 		enable_interrupts(INT_TIMER2);
 		while(!(input(NDAC)) && (seconds <= timeout)) {
@@ -330,9 +329,9 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 			}
 		}
 		disable_interrupts(INT_TIMER2);
-#else
+    #else
 		while(!(input(NDAC))){} 
-#endif
+    #endif
 		
 		output_high(DAV); // Byte has been accepted by all, indicate 
 		                   // byte is no longer valid
@@ -379,7 +378,7 @@ char gpib_receive(char *byt) {
 	output_float(DAV);
 	
 	// Wait for DAV to go low (talker informing us the byte is ready)
-#ifdef WITH_TIMEOUT
+    #ifdef WITH_TIMEOUT
     seconds = 0;
     enable_interrupts(INT_TIMER2);
 	while(input(DAV) && (seconds <= timeout)) {
@@ -394,9 +393,9 @@ char gpib_receive(char *byt) {
 		}
 	}
 	disable_interrupts(INT_TIMER2);
-#else
+    #else
 	while(input(DAV)) {} 
-#endif
+    #endif
 	
 	// Assert NRFD, informing talker to not change the data lines
 	output_low(NRFD); 
@@ -414,7 +413,7 @@ char gpib_receive(char *byt) {
 	output_float(NDAC); 
 
 	// Wait for DAV to go high (talker knows that we have read the byte)
-#ifdef WITH_TIMEOUT
+    #ifdef WITH_TIMEOUT
     seconds = 0;
     enable_interrupts(INT_TIMER2);
 	while(!(input(DAV)) && (seconds<=timeout) ) {
@@ -429,9 +428,9 @@ char gpib_receive(char *byt) {
 		}
 	}
 	disable_interrupts(INT_TIMER2);
-#else
+    #else
 	while(!(input(DAV))) {} 
-#endif
+    #endif
 	
 	// Prep for next byte, we have not accepted anything
 	output_low(NDAC);
@@ -511,10 +510,6 @@ char gpib_read(boolean read_until_eoi) {
 			        if (readBuf[i-1] == eos_string[0]) {
 			            i--;
 			        }
-			        /*else {
-			            readBuf[i] = readCharacter;
-			            i++;
-			        }*/
 			    }
 			    else {
 			        readBuf[i] = readCharacter;
@@ -628,19 +623,6 @@ boolean srq_state(void) {
     return !((boolean)input(SRQ));
 }
 
-int fast_atoi(char *str) {
-    /*
-    * This code snippet is from StackExchange by user 'paddy'
-    * http://stackoverflow.com/questions/16826422/c-most-efficient-way-to-
-    *   convert-string-to-int-faster-than-atoi
-    */
-    int val = 0;
-    while( *str ) {
-        val = val*10 + (*str++ - '0');
-    }
-    return val;
-}
-
 void serial_poll(int address) {
     char error = 0;
     char status_byte;
@@ -689,7 +671,7 @@ void main(void) {
 	char modeBuf[7] = "++mode";
 	char readTimeoutBuf[14] = "++read_tmo_ms";
 	char rstBuf[6] = "++rst";
-	char savecfgBuf[10] = "++savecfg"; //TODO: Actually save to eeprom
+	char savecfgBuf[10] = "++savecfg";
 	char spollBuf[8] = "++spoll";
 	char srqBuf[6] = "++srq";
 	char statusBuf[9] = "++status";
@@ -708,9 +690,7 @@ void main(void) {
 #ifdef WITH_TIMEOUT	
 	// Setup the timer
 	set_rtcc(0);
-	//setup_timer_2(T2_DIV_BY_16,250,10);
 	setup_timer_2(T2_DIV_BY_16,144,2); // 1ms interupt
-	//enable_interrupts(INT_TIMER2);
 	enable_interrupts(GLOBAL);
 	disable_interrupts(INT_TIMER2);
 #endif
@@ -769,14 +749,8 @@ void main(void) {
 	// Start all the GPIB related stuff
 	gpib_init(); // Initialize the GPIB Bus
 	if (mode) {
-	    writeError = gpib_controller_assign(0x00);
+	    gpib_controller_assign(0x00);
     }
-    writeError = 0;
-	
-	// If no instruments are connected, keep rebooting until there is
-	/*if(writeError == 1) {
-	    reset_cpu();
-    }*/
 
     /*
     * The following little block helps provide some visual feedback as to which
@@ -795,6 +769,10 @@ void main(void) {
     *
     * Note this problem is only on initial USB connection and not when pushing 
     * the reset button.
+    *
+    * UPDATE: It turns out this is due to the software package "modemmanager".
+    * The easiest solution is just to remove it. On Debian-based distros run
+    * apt-get purge modemmanager
     */
 	output_low(LED_ERROR); // Turn off the error LED
 	restart_wdt();
@@ -880,12 +858,6 @@ void main(void) {
 			        /*else if (*(buf_pnt+6) == 32) {
 			            // read until specified character
 			        }*/
-			        
-					/*if(gpib_read()){
-					    if (debug == 1) {printf("Read error occured.\n\r");}
-					    delay_ms(1);
-						reset_cpu();
-					}*/
 				}
 				// +test
 				else if(strncmp((char*)buf_pnt,(char*)testBuf,5)==0) { 
@@ -938,7 +910,6 @@ void main(void) {
 					eoiUse = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
 				}
 				// ++eoi {0|1}
-				// TODO: make this command used only for writing and not reading
 				else if(strncmp((char*)buf_pnt+1,(char*)eoiBuf,4)==0) { 
 					if (*(buf_pnt+5) == 0x00) {
 				        printf("%i%c", eoiUse, eot_char);
@@ -1170,21 +1141,10 @@ void main(void) {
 				// If cmd contains a question mark -> is a query
 				if(autoread && mode) {
 				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
-					    gpib_read(eoiUse);
-					        //if (debug == 1){
-					        //    printf("Read error occured.%c", eot_char);
-				            //}
-					        //delay_ms(1);
-						    //reset_cpu();
-					    
+					    gpib_read(eoiUse);					    
 				    }
 				    else if(writeError){
 					    writeError = 0;
-					    //if (debug == 1){
-					    //    printf("Write error occured.%c", eot_char);
-				        //}
-					    //delay_ms(1);
-					    //reset_cpu();
 				    }
 				}
 			} // end of sending internal command
