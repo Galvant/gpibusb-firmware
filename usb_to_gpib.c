@@ -45,7 +45,6 @@ unsigned int buf_in = 0;
 int partnerAddress = 1;
 int myAddress;
 
-char newCmd = 0;
 char eos = 10; // Default end of string character.
 char eos_string[3] = "";
 char eos_code = 3;
