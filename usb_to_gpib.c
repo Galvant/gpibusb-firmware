@@ -830,8 +830,8 @@ void main(void) {
 				            }
 				            else if (*(buf_pnt+6) == 32) {
 				                autoread = atoi((char*)(buf_pnt+7));
-				                if ((autoread != 0) && (autoread != 1)) {
-				                    autoread = 1; // If non-bool sent, set to enable
+				                if (autoread > 2) {
+				                    autoread = 2;    
 				                }
 				            }
 				        }
@@ -1073,6 +1073,7 @@ void main(void) {
 			        else if(*(buf_pnt+2) == 'u') {
 			            // +autoread:
 			            autoread = atoi((char*)(buf_pnt+10));
+			            if (autoread == 1) { autoread = 2; }
 			        }
 			    }
 			    else if(*(buf_pnt+1) == 'd') {
@@ -1177,14 +1178,17 @@ void main(void) {
 				}
 				
 				// If cmd contains a question mark -> is a query
-				if(autoread && mode) {
-				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
+				if((mode) && !(writeError)) {
+				    if(autoread == 1) {
+				        gpib_read(eoiUse);
+			        }
+				    else if ((autoread == 2) && (strchr((char*)buf_pnt, '?') != NULL)) { 
 					    gpib_read(eoiUse);					    
 				    }
-				    else if(writeError){
-					    writeError = 0;
-				    }
 				}
+				else if(writeError){
+				    writeError = 0;
+			    }
 			} // end of sending internal command
 
 		} // End of receiving PC input
