@@ -60,6 +60,7 @@ char listen_only = 0;
 char mode = 1;
 char save_cfg = 1;
 unsigned int status_byte = 0;
+char read_until_char = 10;
 
 unsigned int32 timeout = 1000;
 unsigned int32 seconds = 0;
@@ -443,7 +444,7 @@ char gpib_receive(char *byt) {
     return eoiStatus;
 }
 
-char gpib_read(boolean read_until_eoi) {
+char gpib_read(byte read_until_eoi) {
     char readCharacter,eoiStatus;
     char readBuf[100];
     char i = 0, j=0;
@@ -529,6 +530,35 @@ char gpib_read(boolean read_until_eoi) {
 
         } while (eoiStatus);
 
+        for(j=0;j<i-strip;++j){
+            putc(*bufPnt);
+            ++bufPnt;
+        }
+    } else if(read_until_eoi == 2) { // read until specified character
+        do {
+            eoiStatus = gpib_receive(&readCharacter);
+            if(eoiStatus==0xff){return 1;}
+            if(readCharacter != read_until_char){
+                readBuf[i] = readCharacter;
+                i++;
+            }
+            else {
+                reading_done = true;
+            }
+            if(i == 100){
+                for(j=0;j<100;++j){
+                    putc(*bufPnt);
+                    ++bufPnt;
+                }
+                i = 0;
+                bufPnt = &readBuf[0];
+                #ifdef WITH_WDT
+                restart_wdt();
+                #endif
+            }
+        } while (reading_done == false);
+        reading_done = false;
+        
         for(j=0;j<i-strip;++j){
             putc(*bufPnt);
             ++bufPnt;
@@ -985,14 +1015,17 @@ void main(void) {
                             // ++read
                             else if(mode) {
                                 if (*(buf_pnt+6) == 0x00) {
-                                    gpib_read(false); // read until EOS condition
+                                    gpib_read(0); // read until EOS condition
                                 }
-                                else if (*(buf_pnt+7) == 101) {
-                                    gpib_read(true); // read until EOI flagged
+                                else if (*(buf_pnt+6) == 32) {
+                                    if (*(buf_pnt+7) == 101) {
+                                        gpib_read(1); // read until EOI flagged
+                                    }
+                                    else if ((*(buf_pnt+7) >= 48) && (*(buf_pnt+7) <= 57)) {
+                                        read_until_char = atoi((char*)(buf_pnt+7));
+                                        gpib_read(2); // read until char found
+                                    }
                                 }
-                                /*else if (*(buf_pnt+6) == 32) {
-                                    // read until specified character
-                                }*/
                             }
                         }
                         // ++rst
