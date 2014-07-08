@@ -61,6 +61,7 @@ char mode = 1;
 char save_cfg = 1;
 unsigned int status_byte = 0;
 char read_until_char = 10;
+unsigned int32 delay = 0;
 
 unsigned int32 timeout = 1000;
 unsigned int32 seconds = 0;
@@ -439,8 +440,7 @@ char gpib_receive(char *byt) {
     printf("EOI: %c%c", eoiStatus, eot_char);
     #endif
     
-    // TODO: Replace this with a user-definable value
-    delay_us(10);
+    delay_us((int16)delay);
     
     *byt = a;
     
@@ -904,15 +904,32 @@ void main(void) {
                         cmd_buf[0] = CMD_SDC;
                         writeError = writeError || gpib_cmd(cmd_buf, 1);
                     }
-                    // ++debug {0|1}
                     else if(*(buf_pnt+2) == 'd') { 
-                        if (*(buf_pnt+7) == 0x00) {
-                            printf("%i%c", debug, eot_char);
+                        // ++debug {0|1}
+                        if(*(buf_pnt+4) == 'b') {
+                            if (*(buf_pnt+7) == 0x00) {
+                                printf("%i%c", debug, eot_char);
+                            }
+                            else if (*(buf_pnt+7) == 32) {
+                                debug = atoi((char*)(buf_pnt+8));
+                                if ((debug != 0) && (debug != 1)) {
+                                    debug = 0; // If non-bool sent, set to disabled
+                                }
+                            }
                         }
-                        else if (*(buf_pnt+7) == 32) {
-                            debug = atoi((char*)(buf_pnt+8));
-                            if ((debug != 0) && (debug != 1)) {
-                                debug = 0; // If non-bool sent, set to disabled
+                        // ++delay N
+                        else if(*(buf_pnt+4) == 'l') {
+                            if (*(buf_pnt+7) == 0x00) {
+                                printf("%Lu%c", delay, eot_char);
+                            }
+                            else if (*(buf_pnt+7) == 32) {
+                                delay = atoi32((char*)(buf_pnt+8));
+                                if (delay < 0) {
+                                    delay = 0;
+                                }
+                                if (delay > 65535) {
+                                    delay = 65535;
+                                }
                             }
                         }
                     }
