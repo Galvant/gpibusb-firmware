@@ -501,7 +501,16 @@ char gpib_read(byte read_until_eoi) {
     if(read_until_eoi == 1){
         do {
             eoiStatus = gpib_receive(&readCharacter); // eoiStatus is line lvl
-            if(eoiStatus==0xff){return 1;}
+            if(eoiStatus==0xff){
+                for(j=0;j<i-strip;++j){
+                    putc(*bufPnt);
+                    ++bufPnt;
+                }
+                if ((eot_enable == 1) && (i > 0)) {
+                    printf("%c", eot_char);
+                }
+                return 1;
+            }
             if (eos_code != 0) {
                 if((readCharacter != eos_string[0]) || (eoiStatus)){ // Check for EOM char
                     readBuf[i] = readCharacter; //Copy the read char into the buffer
@@ -540,7 +549,16 @@ char gpib_read(byte read_until_eoi) {
     } else if(read_until_eoi == 2) { // read until specified character
         do {
             eoiStatus = gpib_receive(&readCharacter);
-            if(eoiStatus==0xff){return 1;}
+            if(eoiStatus==0xff){
+                for(j=0;j<i-strip;++j){
+                    putc(*bufPnt);
+                    ++bufPnt;
+                }
+                if ((eot_enable == 1) && (i > 0)) {
+                    printf("%c", eot_char);
+                }
+                return 1;
+            }
             if(readCharacter != read_until_char){
                 readBuf[i] = readCharacter;
                 i++;
@@ -569,7 +587,16 @@ char gpib_read(byte read_until_eoi) {
     } else {
         do {
             eoiStatus = gpib_receive(&readCharacter);
-            if(eoiStatus==0xff){return 1;}
+            if(eoiStatus==0xff){
+                for(j=0;j<i-strip;++j){
+                    putc(*bufPnt);
+                    ++bufPnt;
+                }
+                if ((eot_enable == 1) && (i > 0)) {
+                    printf("%c", eot_char);
+                }
+                return 1;
+            }
             if (eos_code != 0) {
                 if(readCharacter != eos_string[0]){ // Check for EOM char
                     readBuf[i] = readCharacter; //Copy the read char into the buffer
