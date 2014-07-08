@@ -439,6 +439,9 @@ char gpib_receive(char *byt) {
     printf("EOI: %c%c", eoiStatus, eot_char);
     #endif
     
+    // TODO: Replace this with a user-definable value
+    delay_us(10);
+    
     *byt = a;
     
     return eoiStatus;
