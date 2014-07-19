@@ -446,13 +446,11 @@ char gpib_receive(char *byt) {
 char gpib_read(boolean read_until_eoi) {
 	char readCharacter,eoiStatus;
 	char readBuf[100];
+	char *bufPnt = readBuf;
 	char i = 0, j=0;
 	char errorFound = 0;
 	boolean reading_done = false;	
 
-	char *bufPnt;
-	bufPnt = &readBuf[0];
-	
 	#ifdef VERBOSE_DEBUG
 	printf("gpib_read start\n\r");
 	#endif
@@ -641,7 +639,7 @@ void serial_poll(int address) {
 
 void main(void) {
 	char writeError = 0;
-	char *buf_pnt = &buf[0];
+	char *buf_pnt = buf;
 	
 	// Original Command Set
 	char addressBuf[4] = "+a:";
@@ -813,33 +811,33 @@ void main(void) {
 			
 			if(*buf_pnt == '+') { // Controller commands start with a +
 			    // +a:N
-				if(strncmp((char*)buf_pnt,(char*)addressBuf,3)==0) { 
-					partnerAddress = atoi((char*)(buf_pnt+3)); // Parse out the GPIB address
+				if(strncmp(buf_pnt, addressBuf, 3)==0) {
+					partnerAddress = atoi(buf_pnt+3); // Parse out the GPIB address
 				}
 				// ++addr N
-				else if(strncmp((char*)buf_pnt,(char*)addrBuf,6)==0) {
+				else if(strncmp(buf_pnt, addrBuf, 6)==0) {
 				    if (*(buf_pnt+6) == 0x00) {
 				        printf("%i%c", partnerAddress, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
-				        partnerAddress = atoi((char*)(buf_pnt+7));
+				        partnerAddress = atoi(buf_pnt+7);
 				    }
 				}
 				// +t:N
-				else if(strncmp((char*)buf_pnt,(char*)timeoutBuf,3)==0) { 
-					timeout = atoi32((char*)(buf_pnt+3)); // Parse out the timeout period
+				else if(strncmp(buf_pnt, timeoutBuf, 3)==0) {
+					timeout = atoi32(buf_pnt+3); // Parse out the timeout period
 				}
 				// ++read_tmo_ms N
-				else if(strncmp((char*)buf_pnt,(char*)readTimeoutBuf,13)==0) {
+				else if(strncmp(buf_pnt, readTimeoutBuf, 13)==0) {
 			        if (*(buf_pnt+13) == 0x00) {
 			            printf("%Lu%c", timeout, eot_char);
 		            }
 		            else if (*(buf_pnt+13) == 32) {
-					    timeout = atoi32((char*)(buf_pnt+14));
+					    timeout = atoi32(buf_pnt+14);
 				    }
 				}
 				// +read
-				else if((strncmp((char*)buf_pnt,(char*)readCmdBuf,5)==0) && (mode)) { 
+				else if((strncmp(buf_pnt, readCmdBuf, 5)==0) && mode) {
 					if(gpib_read(eoiUse)){
 					    if (debug == 1) {printf("Read error occured.%c", eot_char);}
 					    //delay_ms(1);
@@ -847,7 +845,7 @@ void main(void) {
 					}
 				}
 				// ++read
-				else if((strncmp((char*)buf_pnt+1,(char*)readCmdBuf,5)==0) && (mode)) {
+				else if((strncmp(buf_pnt+1, readCmdBuf, 5)==0) && mode) {
 				    if (*(buf_pnt+6) == 0x00) {
 				        gpib_read(false); // read until EOS condition
 			        }
@@ -859,23 +857,23 @@ void main(void) {
 			        }*/
 				}
 				// +test
-				else if(strncmp((char*)buf_pnt,(char*)testBuf,5)==0) { 
+				else if(strncmp(buf_pnt, testBuf, 5)==0) {
 					printf("testing%c", eot_char);
 				}
 				// +eos:N
-				else if(strncmp((char*)buf_pnt,(char*)eosBuf,5)==0) { 
-					eos = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
+				else if(strncmp(buf_pnt, eosBuf, 5)==0) {
+					eos = atoi(buf_pnt+5); // Parse out the end of string byte
 					eos_string[0] = eos;
 					eos_string[1] = 0x00;
 					eos_code = 4;
 				}
 				// ++eos {0|1|2|3}
-				else if(strncmp((char*)buf_pnt+1,(char*)eosBuf,4)==0) { 
+				else if(strncmp(buf_pnt+1, eosBuf, 4)==0) {
 					if (*(buf_pnt+5) == 0x00) {
 				        printf("%i%c", eos_code, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
-				        eos_code = atoi((char*)(buf_pnt+6));
+				        eos_code = atoi(buf_pnt+6);
 				        switch (eos_code) {
 				            case 0:
 				                eos_code = 0;
@@ -905,32 +903,32 @@ void main(void) {
 				    }
 				}
 				// +eoi:{0|1}
-				else if(strncmp((char*)buf_pnt,(char*)eoiBuf,5)==0) { 
-					eoiUse = atoi((char*)(buf_pnt+5)); // Parse out the end of string byte
+				else if(strncmp(buf_pnt, eoiBuf, 5)==0) {
+					eoiUse = atoi(buf_pnt+5); // Parse out the end of string byte
 				}
 				// ++eoi {0|1}
-				else if(strncmp((char*)buf_pnt+1,(char*)eoiBuf,4)==0) { 
+				else if(strncmp(buf_pnt+1, eoiBuf, 4)==0) {
 					if (*(buf_pnt+5) == 0x00) {
 				        printf("%i%c", eoiUse, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
-				        eoiUse = atoi((char*)(buf_pnt+6));
+				        eoiUse = atoi(buf_pnt+6);
 				    }
 				}
 				// +strip:{0|1}
-				else if(strncmp((char*)buf_pnt,(char*)stripBuf,7)==0) { 
-					strip = atoi((char*)(buf_pnt+7)); // Parse out the end of string byte
+				else if(strncmp(buf_pnt, stripBuf, 7)==0) {
+					strip = atoi(buf_pnt+7); // Parse out the end of string byte
 				}
 				// +ver
-				else if(strncmp((char*)buf_pnt,(char*)versionBuf,4)==0) { 
+				else if(strncmp(buf_pnt, versionBuf, 4)==0) {
 					printf("%i%c", version, eot_char);
 				}
 				// ++ver
-				else if(strncmp((char*)buf_pnt+1,(char*)versionBuf,4)==0) { 
+				else if(strncmp(buf_pnt+1, versionBuf, 4)==0) {
 					printf("Version %i.0%c", version, eot_char);
 				}
 				// +get
-				else if((strncmp((char*)buf_pnt,(char*)getCmdBuf,4)==0) && (mode)) { 
+				else if((strncmp(buf_pnt, getCmdBuf, 4)==0) && mode) {
 					if (*(buf_pnt+5) == 0x00) {
 				        writeError = writeError || addressTarget(partnerAddress);
 				        cmd_buf[0] = CMD_GET;
@@ -941,7 +939,7 @@ void main(void) {
 				    }*/
 				}
 				// ++trg
-				else if((strncmp((char*)buf_pnt,(char*)trgBuf,5)==0) && (mode)) {
+				else if((strncmp(buf_pnt, trgBuf, 5)==0) && mode) {
 				    if (*(buf_pnt+5) == 0x00) {
 				        writeError = writeError || addressTarget(partnerAddress);
 				        cmd_buf[0] = CMD_GET;
@@ -952,49 +950,49 @@ void main(void) {
 				    }*/
 				}
 				// +autoread:{0|1}
-				else if(strncmp((char*)buf_pnt,(char*)autoReadBuf,10)==0) { 
-					autoread = atoi((char*)(buf_pnt+10));
+				else if(strncmp(buf_pnt, autoReadBuf, 10)==0) {
+					autoread = atoi(buf_pnt+10);
 				}
 				// ++auto {0|1}
-				else if(strncmp((char*)buf_pnt,(char*)autoBuf,6)==0) {
+				else if(strncmp(buf_pnt, autoBuf, 6)==0) {
 				    if (*(buf_pnt+6) == 0x00) {
 				        printf("%i%c", autoRead, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
-				        autoread = atoi((char*)(buf_pnt+7));
+				        autoread = atoi(buf_pnt+7);
 				        if ((autoread != 0) && (autoread != 1)) {
 				            autoread = 1; // If non-bool sent, set to enable
 				        }
 				    }
 				}
 				// +reset
-				else if(strncmp((char*)buf_pnt,(char*)resetBuf,6)==0) {
+				else if(strncmp(buf_pnt, resetBuf, 6)==0) {
 				    delay_ms(1); 
 					reset_cpu();
 				}
 				// ++rst
-				else if(strncmp((char*)buf_pnt,(char*)rstBuf,5)==0) {
+				else if(strncmp(buf_pnt, rstBuf, 5)==0) {
 				    delay_ms(1); 
 					reset_cpu();
 				}
 				// +debug:{0|1}
-				else if(strncmp((char*)buf_pnt,(char*)debugBuf,7)==0) { 
-					debug = atoi((char*)(buf_pnt+7));
+				else if(strncmp(buf_pnt, debugBuf, 7)==0) {
+					debug = atoi(buf_pnt+7);
 				}
 				// ++debug {0|1}
-				else if(strncmp((char*)buf_pnt+1,(char*)debugBuf,6)==0) { 
+				else if(strncmp(buf_pnt+1, debugBuf, 6)==0) {
 					if (*(buf_pnt+7) == 0x00) {
 				        printf("%i%c", debug, eot_char);
 				    }
 				    else if (*(buf_pnt+7) == 32) {
-				        debug = atoi((char*)(buf_pnt+8));
+				        debug = atoi(buf_pnt+8);
 				        if ((debug != 0) && (debug != 1)) {
 				            debug = 0; // If non-bool sent, set to disabled
 				        }
 				    }
 				}
 				// ++clr
-				else if((strncmp((char*)buf_pnt,(char*)clrBuf,5)==0) && (mode)) {
+				else if((strncmp(buf_pnt, clrBuf, 5)==0) && mode) {
 				    // This command is special in that we must
 				    // address a specific instrument.
 				    writeError = writeError || addressTarget(partnerAddress);
@@ -1002,63 +1000,63 @@ void main(void) {
 					writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				// ++eot_enable {0|1}
-				else if(strncmp((char*)buf_pnt,(char*)eotEnableBuf,12)==0) {
+				else if(strncmp(buf_pnt, eotEnableBuf, 12)==0) {
 				    if (*(buf_pnt+12) == 0x00) {
 				        printf("%i%c", eot_enable, eot_char);
 				    }
 				    else if (*(buf_pnt+12) == 32) {
-				        eot_enable = atoi((char*)(buf_pnt+13));
+				        eot_enable = atoi(buf_pnt+13);
 				        if ((eot_enable != 0) && (eot_enable != 1)) {
 				            eot_enable = 1; // If non-bool sent, set to enable
 				        }
 				    }
 				}
 				// ++eot_char N
-				else if(strncmp((char*)buf_pnt,(char*)eotCharBuf,10)==0) {
+				else if(strncmp(buf_pnt, eotCharBuf, 10)==0) {
 				    if (*(buf_pnt+10) == 0x00) {
 				        printf("%i%c", eot_char, eot_char);
 				    }
 				    else if (*(buf_pnt+10) == 32) {
-				        eot_char = atoi((char*)(buf_pnt+11));
+				        eot_char = atoi(buf_pnt+11);
 				    }
 				}
 				// ++ifc
-				else if((strncmp((char*)buf_pnt,(char*)ifcBuf,5)==0) && (mode)) {
+				else if((strncmp(buf_pnt, ifcBuf, 5)==0) && mode) {
 				    output_low(IFC); // Assert interface clear.
 	                delay_us(150);
 	                output_float(IFC); // Finishing clearing interface
 				}
 				// ++llo
-				else if((strncmp((char*)buf_pnt,(char*)lloBuf,5)==0) && (mode)) {
+				else if((strncmp(buf_pnt, lloBuf, 5)==0) && mode) {
 				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_LLO;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				// ++loc
-				else if((strncmp((char*)buf_pnt,(char*)locBuf,5)==0) && (mode)) {
+				else if((strncmp(buf_pnt, locBuf, 5)==0) && mode) {
 				    writeError = writeError || addressTarget(partnerAddress);
 				    cmd_buf[0] = CMD_GTL;
 				    writeError = writeError || gpib_cmd(cmd_buf, 1);
 				}
 				// ++lon {0|1}
-				else if((strncmp((char*)buf_pnt,(char*)lonBuf,5)==0) && (!mode)) {
+				else if((strncmp(buf_pnt, lonBuf, 5)==0) && !mode) {
 				    if (*(buf_pnt+5) == 0x00) {
 				        printf("%i%c", listen_only, eot_char);
 				    }
 				    else if (*(buf_pnt+5) == 32) {
-				        listen_only = atoi((char*)(buf_pnt+6));
+				        listen_only = atoi(buf_pnt+6);
 				        if ((listen_only != 0) && (listen_only != 1)) {
 				            listen_only = 0; // If non-bool sent, set to disable
 				        }
 				    }
 				}
 				// ++mode {0|1}
-				else if(strncmp((char*)buf_pnt,(char*)modeBuf,6)==0) {
+				else if(strncmp(buf_pnt, modeBuf, 6)==0) {
 				    if (*(buf_pnt+6) == 0x00) {
 				        printf("%i%c", mode, eot_char);
 				    }
 				    else if (*(buf_pnt+6) == 32) {
-				        mode = atoi((char*)(buf_pnt+7));
+				        mode = atoi(buf_pnt+7);
 				        if ((mode != 0) && (mode != 1)) {
 				            mode = 1; // If non-bool sent, set to control mode
 				        }
@@ -1069,12 +1067,12 @@ void main(void) {
 				    }
 				}
 				// ++savecfg {0|1}
-				else if(strncmp((char*)buf_pnt,(char*)savecfgBuf,9)==0) {
+				else if(strncmp(buf_pnt, savecfgBuf, 9)==0) {
 				    if (*(buf_pnt+9) == 0x00) {
 				        printf("%i%c", save_cfg, eot_char);
 				    }
 				    else if (*(buf_pnt+9) == 32) {
-				        save_cfg = atoi((char*)(buf_pnt+10));
+				        save_cfg = atoi(buf_pnt+10);
 				        if ((save_cfg != 0) && (save_cfg != 1)) {
 				            save_cfg = 1; // If non-bool sent, set to enable
 				        }
@@ -1092,25 +1090,25 @@ void main(void) {
 				    }
 				}
 				// ++srq
-				else if((strncmp((char*)buf_pnt,(char*)srqBuf,5)==0) && (mode)) {
+				else if((strncmp(buf_pnt, srqBuf, 5)==0) && mode) {
 				    printf("%i%c", srq_state(), eot_char);
 				}
 				// ++spoll N
-				else if((strncmp((char*)buf_pnt,(char*)spollBuf,7)==0) && (mode)) {
+				else if((strncmp(buf_pnt, spollBuf, 7)==0) && mode) {
 				    if (*(buf_pnt+7) == 0x00) {
 				        serial_poll(partnerAddress);
 				    }
 				    else if (*(buf_pnt+7) == 32) {
-				        serial_poll(atoi((char*)(buf_pnt+8)));
+				        serial_poll(atoi(buf_pnt+8));
 				    }
 				}
 				// ++status
-				else if((strncmp((char*)buf_pnt,(char*)statusBuf,8)==0) && (!mode)) {
+				else if((strncmp(buf_pnt, statusBuf, 8)==0) && !mode) {
 				    if (*(buf_pnt+8) == 0x00) {
 				       printf("%u%c", status_byte, eot_char);
 				    }
 				    else if (*(buf_pnt+8) == 32) {
-				        status_byte = atoi((char*)(buf_pnt+9));;
+				        status_byte = atoi(buf_pnt+9);
 				    }
 				}
 				else{
@@ -1151,8 +1149,8 @@ void main(void) {
 				
 				// If cmd contains a question mark -> is a query
 				if(autoread && mode) {
-				    if ((strchr((char*)buf_pnt, '?') != NULL) && !(writeError)) { 
-					    gpib_read(eoiUse);					    
+				    if ((strchr(buf_pnt, '?') != NULL) && !writeError) {
+					    gpib_read(eoiUse);
 				    }
 				    else if(writeError){
 					    writeError = 0;
