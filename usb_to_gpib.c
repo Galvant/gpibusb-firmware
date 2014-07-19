@@ -54,7 +54,7 @@ char eoiUse = 1; // By default, we are using EOI to signal end of
 char debug = 0; // enable or disable read&write error messages
 
 byte strip = 0;
-char autoread = 1;
+int autoread = 1;
 char eot_enable = 1;
 char eot_char = 13; // default CR
 char listen_only = 0;
@@ -1258,12 +1258,9 @@ void main(void) {
                 // Check to see if adapter should automatically tell
                 // instrument to talk
                 if((mode) && !(writeError)) {
-			        if ((strchr((char*)buf_pnt, '?') != NULL) && (autoread==2)){ 
-                        gpib_read(eoiUse);                        
+			        if ((strchr((char*)buf_pnt, '?') != NULL) && (autoread)){ 
+                        gpib_read(eoiUse);                       
                     }
-                    // This next line is slower than the above if statement
-                    // and I have no idea why. Just removing the strchr section
-                    // slows it down.
                     else if (autoread==1) {
                         gpib_read(eoiUse);
                     }
