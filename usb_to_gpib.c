@@ -1255,13 +1255,17 @@ void main(void) {
                     }
                 }
                 
-                // If cmd contains a question mark -> is a query
+                // Check to see if adapter should automatically tell
+                // instrument to talk
                 if((mode) && !(writeError)) {
-                    if(autoread == 1) {
-                        gpib_read(eoiUse);
-                    }
-                    else if ((autoread == 2) && (strchr((char*)buf_pnt, '?') != NULL)) { 
+			        if ((strchr((char*)buf_pnt, '?') != NULL) && (autoread==2)){ 
                         gpib_read(eoiUse);                        
+                    }
+                    // This next line is slower than the above if statement
+                    // and I have no idea why. Just removing the strchr section
+                    // slows it down.
+                    else if (autoread==1) {
+                        gpib_read(eoiUse);
                     }
                 }
                 else if(writeError){
