@@ -41,6 +41,7 @@ const unsigned int buf_size = 235;
 char cmd_buf[10], buf[buf_size+20];
 unsigned int buf_out = 0;
 unsigned int buf_in = 0;
+unsigned int data_available = 0;
 
 int partnerAddress = 1;
 int myAddress;
@@ -87,21 +88,17 @@ void clock_isr() {
 RDA_isr()
 {
     char c;
-    BOOLEAN add_null = false; 
-
+    
     do {
         c=getc();
         if ((c>=32)&&(c<=126)) { // if human readable ascii char
             buf[buf_in++] = c;
-            add_null = true;
         }
-    } while((c!=10)&&(c!=13)); //both LF and CR are now valid termination chars
-    
-    while(kbhit()){
-        buf[buf_in] = getc();
-    }
-    if (add_null)
-        buf[buf_in++] = 0x00;
+        else if ((c==10)||(c==13)) {
+            buf[buf_in++] = 0x00;
+            data_available++;
+        }
+    } while(kbhit());
     
     if (buf_in >= buf_size)
         buf_in = 0;
@@ -868,7 +865,8 @@ void main(void) {
         restart_wdt();
 #endif
 
-        if(buf_in != buf_out) {
+        if(data_available > 0) {
+            data_available--;
             buf_pnt = buf_get(buf_pnt);
             
             if(*buf_pnt == '+') { // Controller commands start with a +
