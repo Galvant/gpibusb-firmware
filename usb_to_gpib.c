@@ -35,12 +35,17 @@
 #include <stdlib.h>
 #include "usb_to_gpib.h"
 
+#define BUF_SIZE 256
+#define MAX_SAFE_LINE_SIZE 32
+#define BUF_HIGH_WATER (BUF_SIZE-MAX_SAFE_LINE_SIZE)
+
 const unsigned int version = 5;
 
-const unsigned int buf_size = 235;
-char cmd_buf[10], buf[buf_size+20];
-unsigned int buf_out = 0;
-unsigned int buf_in = 0;
+char cmd_buf[10];
+char buf[BUF_SIZE];
+char *buf_in_ptr;
+char *buf_out_ptr;
+int lines_buffered = 0;
 
 int partnerAddress = 1;
 int myAddress;
@@ -84,37 +89,56 @@ void clock_isr() {
 #int_rda
 RDA_isr()
 {
-    char c;
-    BOOLEAN add_null = false; 
+	char c;
 
-    do {
-        c=getc();
-        if ((c>=32)&&(c<=126)) { // if human readable ascii char
-            buf[buf_in++] = c;
-            add_null = true;
-        }
-    } while((c!=10)&&(c!=13)); //both LF and CR are now valid termination chars
-    
-    while(kbhit()){
-        buf[buf_in] = getc();
-    }
-    if (add_null)
-        buf[buf_in++] = 0x00;
-    
-	if (buf_in >= buf_size)
-	    buf_in = 0;
+	while (kbhit()) {
+		if (buf_in_ptr == buf_out_ptr && lines_buffered > 0) {
+			/* We wrapped around and caught up with the consumer.
+			 * Stop reading from input.
+			 * WARNING: There is data still to read, but without
+			 * another interrupt in the future no one will read it.
+			 */
+			break;
+		}
+
+		c = getc();
+
+		// if human readable ascii char
+		if (c >= 32 && c <= 126) {
+			*buf_in_ptr = c;
+		} else if (c == '\n' || c == '\r') {
+			*buf_in_ptr = '\0';
+			lines_buffered++;
+		}
+
+		if (buf_in_ptr != buf+BUF_SIZE-1) {
+			buf_in_ptr++;
+		} else {
+			/* whoops, ran out of buffer space
+			 * more than likely we are now corrupting a message
+			 */
+			*buf_in_ptr = '\0';
+			lines_buffered++;
+			buf_in_ptr = buf;
+		}
+	}
+
+	if (buf_in_ptr > buf+BUF_HIGH_WATER) {
+		buf_in_ptr = buf;
+	}
 }
 
-char buf_get(char *pnt) {
-    pnt = &(buf[buf_out]);
-    buf_out += (strlen(&(buf[buf_out])) + 1);
-    if (buf_out >= buf_size)
-        buf_out = 0;
-    if (buf_out == buf_in) {
-        buf_out = 0;
-        buf_in = 0;
-    }
-    return pnt;
+inline void buf_out_ptr_advance(void) {
+	char *next;
+
+	next = buf_out_ptr + strlen(buf_out_ptr) + 1;
+	if (next > buf+BUF_HIGH_WATER) {
+		next = buf;
+	}
+	disable_interrupts(INT_RDA);
+	buf_out_ptr = next;
+	lines_buffered--;
+	enable_interrupts(INT_RDA);
 }
 
 // Puts all the GPIB pins into their correct initial states.
@@ -674,9 +698,7 @@ char helpBuf[7] = "++help"; //TODO
 inline void process_line_from_pc(void)
 {
 	char writeError = 0;
-	char *buf_pnt;
-
-	buf_pnt = buf_get(buf_pnt);
+	char *buf_pnt = buf_out_ptr;
 
 	if(*buf_pnt == '+') { // Controller commands start with a +
 		// +a:N
@@ -1163,7 +1185,7 @@ void main(void) {
         write_eeprom(0x08, 0); // listen_only
         write_eeprom(0x09, 1); // save_cfg
     }
-	
+
 	// Start all the GPIB related stuff
 	gpib_init(); // Initialize the GPIB Bus
 	if (mode) {
@@ -1225,12 +1247,15 @@ void main(void) {
 #ifdef WITH_WDT
 		restart_wdt();
 #endif
-		if(buf_in != buf_out) {
-			process_line_from_pc();
+		if (lines_buffered) {
+			if (*buf_out_ptr != '\0') {
+				process_line_from_pc();
+			}
+			buf_out_ptr_advance();
 		}
 
 		if (!mode) {
-			do_device_mode();
+			do_device_mode():
 		}
 	} // End of main execution loop
 }
