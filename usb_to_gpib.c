@@ -201,8 +201,8 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
     * length: number of bytes to write, 0 if not known.
     * attention: 1 if this is a gpib command, 0 for data
     */
-	char a; // Storage variable for the current character
-	int i; // Loop counter variable
+	char byte;
+	int i;
 
 	output_high(PE);
 	
@@ -250,10 +250,10 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 	
 	
 	for(i = 0;i < length;i++) { //Loop through each character, write to bus
-		a = bytes[i]; // So I don't have to keep typing bytes[i]
+		byte = bytes[i];
 		
 		#ifdef VERBOSE_DEBUG
-		printf("Writing byte: %c %x %c", a, a, eot_char);
+		printf("Writing byte: %c %x %c", byte, byte, eot_char);
 		#endif
 		
 		// Wait for NDAC to go low, indicating previous bit is now done with
@@ -278,9 +278,8 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
     #endif
 
 		// Put the byte on the data lines
-		a = a^0xff;
-		output_b(a);
-	
+		output_b(~byte);
+
 		output_float(NRFD);
 
 		// Wait for listeners to be ready for data (NRFD should be high)
@@ -300,7 +299,7 @@ char _gpib_write(char *bytes, int length, BOOLEAN attention, BOOLEAN useEOI) {
 			}
 		}
 		disable_interrupts(INT_TIMER2);
-    #else		
+    #else
 		while(!(input(NRFD))){}
     #endif
 		
