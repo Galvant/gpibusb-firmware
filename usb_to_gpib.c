@@ -42,6 +42,7 @@ char cmd_buf[10], buf[buf_size+20];
 unsigned int buf_out = 0;
 unsigned int buf_in = 0;
 unsigned int data_available = 0;
+boolean add_void = false;
 
 int partnerAddress = 1;
 int myAddress;
@@ -93,10 +94,12 @@ RDA_isr()
         c=getc();
         if ((c>=32)&&(c<=126)) { // if human readable ascii char
             buf[buf_in++] = c;
+            add_void = true;
         }
-        else if ((c==10)||(c==13)) {
+        else if (((c==10)||(c==13)) && (add_void==true)) {
             buf[buf_in++] = 0x00;
             data_available++;
+            add_void = false;
         }
     } while(kbhit());
     
